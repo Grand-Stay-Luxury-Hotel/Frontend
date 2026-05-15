@@ -1,0 +1,9 @@
+{
+  "name": "grand-stay-frontend-basic",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Configuración básica de frontend para Grand-Stay",
+  "scripts": {
+    "start": "node server.mjs"
+  }
+}
