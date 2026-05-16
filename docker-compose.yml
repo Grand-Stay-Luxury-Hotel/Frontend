@@ -2,10 +2,20 @@ services:
   grandstay-frontend:
     build:
       context: .
+      dockerfile: Dockerfile
     container_name: grandstay-frontend
     restart: unless-stopped
-    environment:
-      NODE_ENV: production
-      FRONTEND_PORT: 5173
     ports:
-      - "5173:5173"
+      - "80:80"
+    networks:
+      - grandstay-net
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+networks:
+  grandstay-net:
+    driver: bridge
