@@ -1,0 +1,185 @@
+/* ══════════════════════════════════════════════════════
+   GoldDatePicker — Grand Stay luxury dark/gold theme
+   ══════════════════════════════════════════════════════ */
+
+/* ── Wrapper ───────────────────────────────────────── */
+.gsdp-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.gsdp-icon {
+  position: absolute;
+  right: 0.75rem;
+  color: var(--c-gold);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  opacity: 0.7;
+}
+
+/* ── Input ─────────────────────────────────────────── */
+.gsdp-input {
+  width: 100%;
+  padding: 0.65rem 2.2rem 0.65rem 0.9rem;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-border);
+  border-radius: var(--r-sm);
+  color: var(--c-text);
+  font-size: 0.875rem;
+  font-family: var(--f-body);
+  outline: none;
+  transition: border-color var(--t);
+  cursor: pointer;
+}
+.gsdp-input::placeholder { color: var(--c-text-3, #5a5040); }
+.gsdp-input:focus { border-color: var(--c-gold); }
+
+/* ── Booking-widget variant (wider padding) ────────── */
+.booking-field .gsdp-input {
+  background: var(--c-surface-2);
+  border-color: var(--c-border);
+}
+
+/* ── Popper / Portal ───────────────────────────────── */
+.react-datepicker-popper {
+  z-index: 9999 !important;
+}
+.react-datepicker-popper[data-placement^='bottom'] .react-datepicker__triangle { display: none; }
+
+/* ── Calendar shell ────────────────────────────────── */
+.gs-calendar.react-datepicker {
+  background: #0d0d0a;
+  border: 1px solid var(--c-gold-border, rgba(201,169,110,0.35));
+  border-radius: 10px;
+  font-family: var(--f-body);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.7);
+  overflow: hidden;
+  padding: 0;
+}
+
+/* ── Month header ──────────────────────────────────── */
+.gs-calendar .react-datepicker__header {
+  background: #12100a;
+  border-bottom: 1px solid rgba(201,169,110,0.2);
+  padding: 0.9rem 1rem 0.6rem;
+}
+
+.gs-calendar .react-datepicker__current-month {
+  color: var(--c-gold);
+  font-family: var(--f-heading);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.6rem;
+}
+
+/* ── Nav arrows ────────────────────────────────────── */
+.gs-calendar .react-datepicker__navigation {
+  top: 0.8rem;
+}
+.gs-calendar .react-datepicker__navigation-icon::before {
+  border-color: var(--c-gold);
+  border-width: 2px 2px 0 0;
+  width: 7px;
+  height: 7px;
+}
+.gs-calendar .react-datepicker__navigation:hover .react-datepicker__navigation-icon::before {
+  border-color: #e8d5a3;
+}
+
+/* ── Day names row ─────────────────────────────────── */
+.gs-calendar .react-datepicker__day-names {
+  display: flex;
+  justify-content: space-around;
+  padding: 0 0.5rem;
+}
+.gs-calendar .react-datepicker__day-name {
+  color: rgba(201,169,110,0.55);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  width: 2.2rem;
+  text-align: center;
+}
+
+/* ── Days grid ─────────────────────────────────────── */
+.gs-calendar .react-datepicker__month {
+  padding: 0.6rem 0.75rem 0.75rem;
+  margin: 0;
+}
+.gs-calendar .react-datepicker__week {
+  display: flex;
+  justify-content: space-around;
+}
+
+.gs-calendar .react-datepicker__day {
+  color: #c8bfa0;
+  font-size: 0.78rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  line-height: 2.2rem;
+  text-align: center;
+  border-radius: 50%;
+  margin: 0.1rem;
+  transition: background 0.15s, color 0.15s;
+  cursor: pointer;
+}
+
+.gs-calendar .react-datepicker__day:hover {
+  background: rgba(201,169,110,0.18);
+  color: var(--c-gold);
+}
+
+/* Selected day */
+.gs-calendar .react-datepicker__day--selected,
+.gs-calendar .react-datepicker__day--keyboard-selected {
+  background: var(--c-gold) !important;
+  color: #080600 !important;
+  font-weight: 700;
+}
+
+.gs-calendar .react-datepicker__day--selected:hover {
+  background: #e8d5a3 !important;
+  color: #080600 !important;
+}
+
+/* Today */
+.gs-calendar .react-datepicker__day--today {
+  font-weight: 700;
+  color: var(--c-gold);
+  border: 1px solid rgba(201,169,110,0.4);
+}
+
+/* Disabled / outside month */
+.gs-calendar .react-datepicker__day--disabled {
+  color: #3a3320;
+  cursor: not-allowed;
+}
+.gs-calendar .react-datepicker__day--disabled:hover {
+  background: transparent;
+  color: #3a3320;
+}
+.gs-calendar .react-datepicker__day--outside-month {
+  color: #2e2a1e;
+}
+
+/* ── Year/month dropdowns (if shown) ─────────────────── */
+.gs-calendar .react-datepicker__year-dropdown,
+.gs-calendar .react-datepicker__month-dropdown {
+  background: #12100a;
+  border: 1px solid rgba(201,169,110,0.3);
+  border-radius: 6px;
+}
+.gs-calendar .react-datepicker__year-option:hover,
+.gs-calendar .react-datepicker__month-option:hover {
+  background: rgba(201,169,110,0.18);
+  color: var(--c-gold);
+}
+.gs-calendar .react-datepicker__year-option--selected_year,
+.gs-calendar .react-datepicker__month-option--selected {
+  color: var(--c-gold);
+  font-weight: 700;
+}
