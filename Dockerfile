@@ -2,15 +2,15 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-ENV NODE_ENV=production
 ENV FRONTEND_PORT=5173
 
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm ci
 
-COPY index.html ./
-COPY styles.css ./
-COPY server.mjs ./
+COPY . .
+RUN npm run build && npm prune --omit=dev
+
+ENV NODE_ENV=production
 
 EXPOSE 5173
 
