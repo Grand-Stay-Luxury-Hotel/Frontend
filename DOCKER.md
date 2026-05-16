@@ -1,25 +1,37 @@
-# Docker Frontend Grand-Stay
+# Grand-Stay Frontend - Docker
 
-Este repositorio se dockeriza de forma independiente porque `Backend` y `Frontend` son repos separados.
+## Requisitos
 
-## Levantar
+- Docker 20.10+
+- Docker Compose v2+
 
-```powershell
-docker compose up -d --build
+## Estructura
+
+```
+Frontend/
+├── Dockerfile              # Multi-stage build con nginx
+├── docker-compose.yml      # Frontend standalone
+├── nginx.conf              # Configuracion de nginx
+├── .dockerignore
+└── ...
 ```
 
-## Puerto
+## Uso
 
-- Frontend: http://localhost:5173
+### Desarrollo standalone
 
-## Logs
+```bash
+# Construir y ejecutar
+docker compose up -d
 
-```powershell
-docker compose logs -f
-```
+# Ver logs
+docker compose logs -f frontend
 
-## Detener
-
-```powershell
+# Detener
 docker compose down
 ```
+
+## Acceso
+
+- Frontend: http://localhost:80
+- El nginx proxyea `/api` al backend en `http://backend:4000`
