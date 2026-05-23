@@ -10,6 +10,8 @@ const PAGE_TITLES = {
   habitaciones:   'Estado de Habitaciones',
   inventario:     'Inventario',
   reportes:       'Reportes Estadísticos',
+  tarifas:        'Gestión de Tarifas',
+  'cuenta-huesped': 'Cuenta del Huésped',
 };
 
 export default function Dashboard() {

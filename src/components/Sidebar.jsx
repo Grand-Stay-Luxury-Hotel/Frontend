@@ -88,6 +88,14 @@ export default function Sidebar() {
           <div className="sidebar-nav-section">
             <div className="sidebar-nav-label">Administración</div>
             <NavItem to="/dashboard/reportes" label="Reportes" icon={<IconChart />} />
+            <NavItem to="/dashboard/tarifas" label="Tarifas" icon={<IconTag />} />
+          </div>
+        )}
+
+        {(isAdmin || isRecep || isHuesped) && (
+          <div className="sidebar-nav-section">
+            <div className="sidebar-nav-label">Cuenta</div>
+            <NavItem to="/dashboard/cuenta-huesped" label="Cuenta del Huésped" icon={<IconWallet />} />
           </div>
         )}
       </nav>
@@ -111,3 +119,5 @@ const IconCoffee   = () => (<svg {...s} viewBox="0 0 24 24"><path d="M18 8h1a4 4
 const IconBed      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v6"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>);
 const IconBox      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>);
 const IconChart    = () => (<svg {...s} viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>);
+const IconTag      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.59 3H4a1 1 0 0 0-1 1v5.59A2 2 0 0 0 3.83 11l9.58 9.59a2 2 0 0 0 2.83 0l4.35-4.35a2 2 0 0 0 0-2.83z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
+const IconWallet   = () => (<svg {...s} viewBox="0 0 24 24"><path d="M21 7H3a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h18a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 13h4"/><path d="M3 7V5a2 2 0 0 1 2-2h13"/></svg>);

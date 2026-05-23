@@ -32,6 +32,9 @@ export const api = {
       request('GET', `/habitaciones/disponibilidad?${new URLSearchParams(params)}`, null, token),
   },
   reservas: {
+    listar:  (token)        => request('GET',    '/reservas',       null, token),
+    buscarHuesped: (documento, token) =>
+      request('GET', `/reservas/huespedes/buscar?${new URLSearchParams({ documento })}`, null, token),
     crear:   (body, token)  => request('POST',   '/reservas',      body, token),
     cancelar: (id, token)   => request('DELETE',  `/reservas/${id}`, null, token),
   },
@@ -52,6 +55,7 @@ export const api = {
     umbral:  (id, umbral, token)   => request('PATCH', `/inventario/${id}/umbral`,      { umbral }, token),
   },
   habitaciones: {
+    listar: (token) => request('GET', '/habitaciones', null, token),
     estado: (id, body, token) => request('PATCH', `/habitaciones/${id}/estado`, body, token),
   },
   reportes: {
@@ -59,5 +63,15 @@ export const api = {
       request('GET', `/reportes/ocupacion?${new URLSearchParams(params)}`, null, token),
     ingresos: (params, token) =>
       request('GET', `/reportes/ingresos?${new URLSearchParams(params)}`, null, token),
+  },
+  tarifas: {
+    listar: (token) => request('GET', '/tarifas', null, token),
+    crear: (body, token) => request('POST', '/tarifas', body, token),
+    actualizar: (id, body, token) => request('PATCH', `/tarifas/${id}`, body, token),
+    eliminar: (id, token) => request('DELETE', `/tarifas/${id}`, null, token),
+  },
+  cuenta: {
+    consultar: (params, token) =>
+      request('GET', `/huespedes/cuenta?${new URLSearchParams(params)}`, null, token),
   },
 };

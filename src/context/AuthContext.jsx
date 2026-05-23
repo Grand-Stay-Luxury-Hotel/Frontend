@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 
 const AuthContext = createContext(null);
+const INACTIVITY_LIMIT_MS = 15 * 60 * 1000;
 
 function decodeToken(token) {
   try {
@@ -12,6 +13,7 @@ function decodeToken(token) {
 }
 
 export function AuthProvider({ children }) {
+  const idleTimerRef = useRef(null);
   const [auth, setAuth] = useState(() => {
     try {
       const stored = sessionStorage.getItem('gs_auth');
@@ -42,6 +44,37 @@ export function AuthProvider({ children }) {
     sessionStorage.removeItem('gs_auth');
     setAuth(null);
   }, []);
+
+  useEffect(() => {
+    if (!auth?.token) {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+      return undefined;
+    }
+
+    const resetInactivityTimer = () => {
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+      }
+      idleTimerRef.current = setTimeout(() => {
+        logout();
+      }, INACTIVITY_LIMIT_MS);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'];
+    events.forEach((eventName) => window.addEventListener(eventName, resetInactivityTimer));
+    resetInactivityTimer();
+
+    return () => {
+      events.forEach((eventName) => window.removeEventListener(eventName, resetInactivityTimer));
+      if (idleTimerRef.current) {
+        clearTimeout(idleTimerRef.current);
+        idleTimerRef.current = null;
+      }
+    };
+  }, [auth?.token, logout]);
 
   return (
     <AuthContext.Provider value={{ auth, login, logout }}>

@@ -14,6 +14,8 @@ import Consumos from './pages/Consumos.jsx';
 import Inventario from './pages/Inventario.jsx';
 import Reportes from './pages/Reportes.jsx';
 import Habitaciones from './pages/Habitaciones.jsx';
+import Tarifas from './pages/Tarifas.jsx';
+import CuentaHuesped from './pages/CuentaHuesped.jsx';
 
 const ROLES = {
   recepcionista: ['Recepcionista'],
@@ -97,6 +99,22 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={ROLES.admin}>
                     <Reportes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tarifas"
+                element={
+                  <ProtectedRoute roles={ROLES.admin}>
+                    <Tarifas />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="cuenta-huesped"
+                element={
+                  <ProtectedRoute roles={ROLES.recepAdminHuesped}>
+                    <CuentaHuesped />
                   </ProtectedRoute>
                 }
               />

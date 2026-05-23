@@ -9,8 +9,8 @@ Fecha de revision: 2026-05-16
 | Estado | Cantidad |
 | --- | ---: |
 | Implementadas | 1 |
-| Parciales | 9 |
-| Pendientes | 2 |
+| Parciales | 11 |
+| Pendientes | 0 |
 
 ## Criterio de estado
 
@@ -30,10 +30,10 @@ Fecha de revision: 2026-05-16
 | HU-F06 | Mapa visual de estados de habitaciones | Habitaciones | Alta | Parcial | `Habitaciones.jsx` actualiza estado por ID; no hay grilla/mapa, panel lateral ni polling |
 | HU-F07 | Formulario de registro de consumos adicionales | Servicios Adicionales | Alta | Parcial | `Consumos.jsx` registra consumos; no lista solo habitaciones ocupadas ni muestra huesped |
 | HU-F08 | Pantalla de inicio de sesion con 2FA para Administrador | Seguridad | Alta | Parcial | `Login.jsx` soporta OTP; no se encontro expiracion automatica por 15 minutos de inactividad |
-| HU-F09 | Panel de gestion de tarifas de temporada | Administracion | Alta | Pendiente | No hay pagina, ruta ni API frontend para tarifas |
+| HU-F09 | Panel de gestion de tarifas de temporada | Administracion | Alta | Parcial | `Tarifas.jsx` con CRUD UI y validacion de solapes; backend aun sin endpoints de tarifas |
 | HU-F10 | Panel de inventario de insumos con alertas visuales | Inventario | Media | Parcial | `Inventario.jsx` muestra alertas y actualiza umbral; falta tabla completa de stock y badge rojo en menu |
 | HU-F11 | Dashboard ejecutivo con graficas de ocupacion e ingresos | Reportes | Media | Parcial | `Reportes.jsx` usa Recharts; falta exportar a PDF y algunos indicadores requeridos |
-| HU-F12 | Consulta de cuenta del huesped en tiempo real | Comunicaciones | Alta | Pendiente | No hay pagina/ruta para cuenta del huesped ni enlace de solo lectura |
+| HU-F12 | Consulta de cuenta del huesped en tiempo real | Comunicaciones | Alta | Parcial | `CuentaHuesped.jsx` con tabla de cargos, total y auto-refresh; backend aun sin endpoint dedicado |
 
 ## HU implementadas
 
@@ -204,31 +204,35 @@ Fecha de revision: 2026-05-16
 - No hay dashboard consolidado en una sola vista; se trabaja por tabs.
 - Rendimiento de 10 segundos no esta verificado en frontend.
 
-## HU pendientes
+## HU parciales adicionales
 
 ### HU-F09 - Panel de gestion de tarifas de temporada
 
-**Estado:** Pendiente
+**Estado:** Parcial
 
-**Falta implementar:**
+**Implementado:**
 - Ruta protegida para Administrador.
-- Listado de tarifas activas.
-- Formulario de crear/editar/eliminar tarifas.
-- Validacion de solapamiento de periodos.
-- Confirmaciones por accion.
-- Integracion con backend, que actualmente tampoco expone endpoints de tarifas.
+- Pantalla `Tarifas.jsx` con listado y formulario CRUD.
+- Validacion frontend de solapamiento de periodos.
+- Confirmaciones para eliminacion.
+
+**Falta o requiere ajuste:**
+- Integracion completa con backend de tarifas (endpoints aun no disponibles).
+- Persistencia real de cambios fuera de entorno mock/404.
 
 ### HU-F12 - Consulta de cuenta del huesped en tiempo real
 
-**Estado:** Pendiente
+**Estado:** Parcial
 
-**Falta implementar:**
-- Pantalla de cuenta del huesped.
-- Listado de cargos de estancia y consumos.
-- Total acumulado en tiempo real o con actualizacion automatica.
-- Enlace de solo lectura compartible.
-- Formato de moneda local e impuestos desglosados.
-- Endpoint backend dedicado para consultar cuenta por reserva/huesped o token publico.
+**Implementado:**
+- Ruta y pantalla `CuentaHuesped.jsx`.
+- Listado de cargos y resumen de subtotal/impuestos/total.
+- Actualizacion automatica cada 30 segundos.
+- Soporte para enlace de solo lectura cuando el backend lo retorne.
+
+**Falta o requiere ajuste:**
+- Endpoint backend dedicado para cuenta por reserva/huesped o token publico.
+- Contrato final de respuesta para estandarizar campos y enlace publico.
 
 ## Observaciones tecnicas
 

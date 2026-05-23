@@ -25,13 +25,20 @@ Frontend/
 docker compose up -d
 
 # Ver logs
-docker compose logs -f frontend
+docker compose logs -f grandstay-frontend
 
 # Detener
 docker compose down
 ```
 
+### Stack completo (frontend + backend + mysql)
+
+```bash
+cd ..
+docker compose up --build -d
+```
+
 ## Acceso
 
 - Frontend: http://localhost:80
-- El nginx proxyea `/api` al backend en `http://backend:4000`
+- El nginx proxyea /api al backend en http://grandstay-backend:4000
