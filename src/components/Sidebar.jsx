@@ -31,10 +31,7 @@ export default function Sidebar() {
   const { auth, logout } = useAuth();
   const navigate = useNavigate();
   const rol = auth?.rol ?? '';
-  const isAdmin      = rol === 'Administrador';
-  const isRecep      = rol === 'Recepcionista';
-  const isHuesped    = rol === 'Huesped';
-  const isLimpieza   = LIMPEZA_ROLES.includes(rol);
+  const isAdmin = rol === 'Administrador';
 
   const [alertCount, setAlertCount] = useState(0);
   useEffect(() => {
@@ -49,6 +46,64 @@ export default function Sidebar() {
     navigate('/');
   };
 
+  const ROLES = {
+    admin: ['Administrador'],
+    recepcionista: ['Recepcionista'],
+    limpieza: ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'],
+    tecnico: ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'],
+    huesped: ['Huesped', 'Huésped'],
+  };
+
+  const MENU_SECTIONS = [
+    {
+      label: 'General',
+      items: [
+        { to: '/dashboard/overview', label: 'Panel General', icon: <IconGrid />, roles: ROLES.admin },
+        { to: '/dashboard/disponibilidad', label: 'Disponibilidad', icon: <IconCalendar />, roles: [...ROLES.recepcionista, ...ROLES.huesped] },
+      ]
+    },
+    {
+      label: 'Reservas',
+      items: [
+        { to: '/dashboard/reservas', label: 'Reservas', icon: <IconBook />, roles: [...ROLES.recepcionista, ...ROLES.huesped] }
+      ]
+    },
+    {
+      label: 'Operaciones',
+      items: [
+        { to: '/dashboard/checkin', label: 'Check-In', icon: <IconLogin />, roles: ROLES.recepcionista },
+        { to: '/dashboard/checkout', label: 'Check-Out', icon: <IconLogout />, roles: ROLES.recepcionista },
+        { to: '/dashboard/consumos', label: 'Consumos', icon: <IconCoffee />, roles: ROLES.recepcionista },
+      ]
+    },
+    {
+      label: 'Habitaciones',
+      items: [
+        { to: '/dashboard/habitaciones', label: 'Estado de Hab.', icon: <IconBed />, roles: [...ROLES.admin, ...ROLES.recepcionista, ...ROLES.limpieza, ...ROLES.tecnico] }
+      ]
+    },
+    {
+      label: 'Inventario',
+      items: [
+        { to: '/dashboard/inventario', label: 'Inventario', icon: <IconBox />, roles: [...ROLES.admin, ...ROLES.limpieza], hasBadge: true }
+      ]
+    },
+    {
+      label: 'Administración',
+      items: [
+        { to: '/dashboard/reportes', label: 'Reportes', icon: <IconChart />, roles: ROLES.admin },
+        { to: '/dashboard/tarifas', label: 'Tarifas', icon: <IconTag />, roles: ROLES.admin },
+        { to: '/dashboard/auditoria', label: 'Auditoría', icon: <IconShield />, roles: ROLES.admin },
+      ]
+    },
+    {
+      label: 'Mi Cuenta',
+      items: [
+        { to: '/dashboard/cuenta', label: 'Mi Cuenta', icon: <IconUser />, roles: ROLES.huesped }
+      ]
+    }
+  ];
+
   return (
     <aside className="dashboard-sidebar">
       <div className="sidebar-header">
@@ -60,61 +115,24 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {!isLimpieza && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">General</div>
-            {isAdmin
-              ? <NavItem to="/dashboard/overview" label="Panel General" icon={<IconGrid />} />
-              : <NavItem to="/dashboard/disponibilidad" label="Disponibilidad" icon={<IconCalendar />} />
-            }
-          </div>
-        )}
-
-        {(isAdmin || isRecep || isHuesped) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Reservas</div>
-            <NavItem to="/dashboard/reservas" label="Reservas" icon={<IconBook />} />
-          </div>
-        )}
-
-        {isRecep && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Operaciones</div>
-            <NavItem to="/dashboard/checkin"  label="Check-In"  icon={<IconLogin />} />
-            <NavItem to="/dashboard/checkout" label="Check-Out" icon={<IconLogout />} />
-            <NavItem to="/dashboard/consumos" label="Consumos"  icon={<IconCoffee />} />
-          </div>
-        )}
-
-        {(isAdmin || isRecep || isLimpieza) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Habitaciones</div>
-            <NavItem to="/dashboard/habitaciones" label="Estado de Hab." icon={<IconBed />} />
-          </div>
-        )}
-
-        {(isAdmin || isLimpieza) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Inventario</div>
-            <NavItem to="/dashboard/inventario" label="Inventario" icon={<IconBox />} badge={alertCount} />
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Administración</div>
-            <NavItem to="/dashboard/reportes"   label="Reportes"  icon={<IconChart />} />
-            <NavItem to="/dashboard/tarifas"    label="Tarifas"   icon={<IconTag />} />
-            <NavItem to="/dashboard/auditoria"  label="Auditoría" icon={<IconShield />} />
-          </div>
-        )}
-
-        {isHuesped && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Mi Cuenta</div>
-            <NavItem to="/dashboard/cuenta" label="Mi Cuenta" icon={<IconUser />} />
-          </div>
-        )}
+        {MENU_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter(item => item.roles.includes(rol));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div className="sidebar-nav-section" key={section.label}>
+              <div className="sidebar-nav-label">{section.label}</div>
+              {visibleItems.map((item) => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  badge={item.hasBadge && isAdmin ? alertCount : 0}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="sidebar-footer">

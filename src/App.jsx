@@ -22,22 +22,21 @@ import Auditoria from './pages/Auditoria.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
 
 const ROLES = {
-  recepcionista: ['Recepcionista'],
   admin: ['Administrador'],
-  limpieza: ['PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'],
-  adminLimpieza: ['Administrador', 'PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'],
-  recepAdminHuesped: ['Recepcionista', 'Administrador', 'Huesped'],
-  recepAdmin: ['Recepcionista', 'Administrador'],
-  recepAdminLimpieza: ['Recepcionista', 'Administrador', 'PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'],
+  recepcionista: ['Recepcionista'],
+  limpieza: ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'],
+  tecnico: ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'],
+  huesped: ['Huesped', 'Huésped'],
 };
 
-const LIMPEZA_ROLES = ['PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'];
+const LIMPEZA_ROLES = ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'];
+const TECNICO_ROLES = ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'];
 
 function DashboardIndex() {
   const { auth } = useAuth();
   const rol = auth?.rol ?? '';
   if (rol === 'Administrador') return <Navigate to="overview" replace />;
-  if (LIMPEZA_ROLES.includes(rol)) return <Navigate to="habitaciones" replace />;
+  if (LIMPEZA_ROLES.includes(rol) || TECNICO_ROLES.includes(rol)) return <Navigate to="habitaciones" replace />;
   return <Navigate to="disponibilidad" replace />;
 }
 
@@ -75,7 +74,14 @@ export default function App() {
               }
             >
               <Route index element={<DashboardIndex />} />
-              <Route path="disponibilidad" element={<Disponibilidad />} />
+              <Route
+                path="disponibilidad"
+                element={
+                  <ProtectedRoute roles={[...ROLES.recepcionista, ...ROLES.huesped]}>
+                    <Disponibilidad />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="overview"
                 element={
@@ -87,7 +93,7 @@ export default function App() {
               <Route
                 path="reservas"
                 element={
-                  <ProtectedRoute roles={ROLES.recepAdminHuesped}>
+                  <ProtectedRoute roles={[...ROLES.recepcionista, ...ROLES.huesped]}>
                     <Reservas />
                   </ProtectedRoute>
                 }
@@ -119,7 +125,7 @@ export default function App() {
               <Route
                 path="habitaciones"
                 element={
-                  <ProtectedRoute roles={ROLES.recepAdminLimpieza}>
+                  <ProtectedRoute roles={[...ROLES.admin, ...ROLES.recepcionista, ...ROLES.limpieza, ...ROLES.tecnico]}>
                     <Habitaciones />
                   </ProtectedRoute>
                 }
@@ -127,7 +133,7 @@ export default function App() {
               <Route
                 path="inventario"
                 element={
-                  <ProtectedRoute roles={ROLES.adminLimpieza}>
+                  <ProtectedRoute roles={[...ROLES.admin, ...ROLES.limpieza]}>
                     <Inventario />
                   </ProtectedRoute>
                 }
@@ -151,7 +157,7 @@ export default function App() {
               <Route
                 path="cuenta"
                 element={
-                  <ProtectedRoute roles={['Huesped']}>
+                  <ProtectedRoute roles={ROLES.huesped}>
                     <CuentaHuesped />
                   </ProtectedRoute>
                 }

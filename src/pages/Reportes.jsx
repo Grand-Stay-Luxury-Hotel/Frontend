@@ -86,7 +86,22 @@ export default function Reportes() {
   // Normalize ingresos data for pie chart
   const ingChartData = (() => {
     if (!ingData) return [];
-    const flat = ingData.data ?? ingData.ingresos ?? [];
+    let flat = [];
+    if (Array.isArray(ingData.data)) {
+      flat = ingData.data;
+    } else if (ingData.data && typeof ingData.data === 'object') {
+      const habs = (ingData.data.habitaciones ?? []).map((h) => ({
+        tipo_habitacion: h.tipo_habitacion,
+        ingresos: h.ingresos,
+      }));
+      const servs = (ingData.data.servicios_adicionales ?? []).map((s) => ({
+        categoria: s.tipo_servicio,
+        ingresos: s.ingresos,
+      }));
+      flat = [...habs, ...servs];
+    } else if (Array.isArray(ingData.ingresos)) {
+      flat = ingData.ingresos;
+    }
     // Could be grouped by tipo_habitacion + categoria
     const map = {};
     for (const r of flat) {

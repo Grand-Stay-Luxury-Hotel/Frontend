@@ -9,7 +9,7 @@ export default function ProtectedRoute({ children, roles = [] }) {
   }
 
   if (roles.length > 0 && !roles.includes(auth.rol)) {
-    return <Navigate to="/dashboard/disponibilidad" replace />;
+    return <Navigate to="/dashboard" replace />;
   }
 
   return children;

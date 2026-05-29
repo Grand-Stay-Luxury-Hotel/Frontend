@@ -95,6 +95,11 @@ export const api = {
     listar: async (token = null) => {
       if (!token) return TIPOS_HAB_COMPAT;
       try {
+        const stored = sessionStorage.getItem('gs_auth');
+        const auth = stored ? JSON.parse(stored) : null;
+        if (auth?.rol === 'Huesped' || auth?.rol === 'Huésped') {
+          return TIPOS_HAB_COMPAT;
+        }
         const res = await request('GET', '/habitaciones?limite=100', null, token);
         const items = normalizeData(res);
         const unique = new Map();

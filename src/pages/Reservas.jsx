@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -170,9 +170,11 @@ export default function Reservas() {
     }
   };
 
-  const canCreate = auth.rol === 'Recepcionista' || auth.rol === 'Huesped' || auth.rol === 'Administrador';
-  const canCancel = auth.rol === 'Recepcionista' || auth.rol === 'Administrador';
-  const esRecepAdmin = auth.rol === 'Recepcionista' || auth.rol === 'Administrador';
+  const isRecep = ['Recepcionista'].includes(auth.rol);
+  const isHuesped = ['Huesped', 'Huésped'].includes(auth.rol);
+  const canCreate = isRecep || isHuesped;
+  const canCancel = isRecep;
+  const esRecepAdmin = isRecep;
 
   const cargarReservasActivas = useCallback(async () => {
     if (!esRecepAdmin) return;
