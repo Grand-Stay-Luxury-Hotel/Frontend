@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
@@ -6,17 +6,56 @@ import { api } from '../services/api.js';
 const CRITICIDAD_CLASS = { critica: 'crit-critica', alta: 'crit-alta', normal: 'crit-normal' };
 const CRITICIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', normal: 'Normal' };
 
-const TAREAS = ['limpieza_rutina', 'limpieza_profunda', 'mantenimiento', 'preparacion_hab'];
+const TAREAS = [
+  { value: 'limpieza_rutina',   label: 'Limpieza rutina'   },
+  { value: 'limpieza_profunda', label: 'Limpieza profunda' },
+  { value: 'mantenimiento',     label: 'Mantenimiento'     },
+  { value: 'preparacion_hab',   label: 'Preparación hab.'  },
+];
 
 export default function Inventario() {
   const { auth } = useAuth();
   const { addToast } = useToast();
   const isAdmin = auth.rol === 'Administrador';
 
-  const [tab, setTab] = useState('alertas');
+  const [tab, setTab] = useState(isAdmin ? 'insumos' : 'consumo');
 
-  /* ── ALERTS ─────────────────────────────────────── */
-  const [alerts, setAlerts]         = useState([]);
+  // Insumos (catálogo dinámico)
+  const [insumos, setInsumos]         = useState([]);
+  const [insumosLoading, setInsumosLoading] = useState(false);
+
+  const loadInsumos = useCallback(async () => {
+    setInsumosLoading(true);
+    try {
+      const res = await api.inventario.listarInsumos(auth.token);
+      setInsumos(res.data ?? res);
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setInsumosLoading(false);
+    }
+  }, [auth.token, addToast]);
+
+  // Stock crítico
+  const [stockCritico, setStockCritico]       = useState([]);
+  const [stockLoading, setStockLoading]         = useState(false);
+  const [stockLoaded, setStockLoaded]           = useState(false);
+
+  const loadStockCritico = useCallback(async () => {
+    setStockLoading(true);
+    try {
+      const res = await api.inventario.stockCritico(auth.token);
+      setStockCritico(res.data ?? res);
+      setStockLoaded(true);
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setStockLoading(false);
+    }
+  }, [auth.token, addToast]);
+
+  // Alertas
+  const [alerts, setAlerts]           = useState([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
   const [alertsLoaded, setAlertsLoaded]   = useState(false);
 
@@ -24,7 +63,7 @@ export default function Inventario() {
     setAlertsLoading(true);
     try {
       const data = await api.inventario.alertas(auth.token);
-      setAlerts(data.alertas ?? data ?? []);
+      setAlerts(data.data ?? data.alertas ?? []);
       setAlertsLoaded(true);
     } catch (err) {
       addToast(err.message, 'error');
@@ -33,7 +72,36 @@ export default function Inventario() {
     }
   }, [auth.token, addToast]);
 
-  /* ── CONSUMO ─────────────────────────────────────── */
+  // Historial
+  const [historial, setHistorial]       = useState([]);
+  const [histLoading, setHistLoading]   = useState(false);
+  const [histLoaded, setHistLoaded]     = useState(false);
+
+  const loadHistorial = useCallback(async () => {
+    setHistLoading(true);
+    try {
+      const res = await api.inventario.historial({}, auth.token);
+      setHistorial(res.data ?? res);
+      setHistLoaded(true);
+    } catch (err) {
+      addToast(err.message, 'error');
+    } finally {
+      setHistLoading(false);
+    }
+  }, [auth.token, addToast]);
+
+  useEffect(() => {
+    loadInsumos();
+  }, [loadInsumos]);
+
+  const handleTabChange = (id) => {
+    setTab(id);
+    if (id === 'stockCritico' && !stockLoaded) loadStockCritico();
+    if (id === 'alertas' && !alertsLoaded) loadAlerts();
+    if (id === 'historial' && !histLoaded) loadHistorial();
+  };
+
+  /* â”€â”€ CONSUMO â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [consumoForm, setConsumoForm] = useState({ insumoId: '', cantidad: '', habitacionId: '', tipoTarea: 'limpieza_rutina', observaciones: '' });
   const [consumoLoading, setConsumoLoading] = useState(false);
   const [consumoResult, setConsumoResult]   = useState(null);
@@ -42,20 +110,43 @@ export default function Inventario() {
 
   const handleConsumo = async (e) => {
     e.preventDefault();
+    if (!consumoForm.habitacionId) {
+      addToast('El ID de habitación es obligatorio para registrar consumo de inventario.', 'warning');
+      return;
+    }
+    if (!auth.id_personal && auth.rol !== 'PersonalLimpieza') {
+      addToast('Solo personal de limpieza puede registrar consumos de inventario.', 'warning');
+      return;
+    }
+
     setConsumoLoading(true);
     setConsumoResult(null);
     try {
+      const habitacionesRes = await api.habitaciones.listar(auth.token);
+      const habitaciones = habitacionesRes?.data ?? habitacionesRes ?? [];
+      const habitacionIngresada = String(consumoForm.habitacionId).trim();
+      const habitacion = habitaciones.find((h) => (
+        String(h.id_habitacion) === habitacionIngresada
+        || String(h.numero_habitacion ?? h.numero) === habitacionIngresada
+      ));
+
+      if (!habitacion?.id_habitacion) {
+        throw new Error('La habitación ingresada no existe. Usa el ID o número real de la habitación.');
+      }
+
       const payload = {
         insumoId:    Number(consumoForm.insumoId),
         cantidad:    Number(consumoForm.cantidad),
-        habitacionId: Number(consumoForm.habitacionId),
+        habitacionId: Number(habitacion.id_habitacion),
         tipoTarea:   consumoForm.tipoTarea,
         observaciones: consumoForm.observaciones || undefined,
+        idPersonal: auth.id_personal ?? undefined,
       };
-      const data = await api.inventario.consumo(payload, auth.token);
+      const data = await api.inventario.registrarConsumo(payload, auth.token);
       setConsumoResult({ type: 'success', data });
       addToast('Consumo de insumo registrado.', 'success');
       setConsumoForm({ insumoId: '', cantidad: '', habitacionId: '', tipoTarea: 'limpieza_rutina', observaciones: '' });
+      loadInsumos();
     } catch (err) {
       setConsumoResult({ type: 'error', msg: err.message });
       addToast(err.message, 'error');
@@ -64,7 +155,7 @@ export default function Inventario() {
     }
   };
 
-  /* ── UMBRAL ──────────────────────────────────────── */
+  /* â”€â”€ UMBRAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [umbralForm, setUmbralForm]   = useState({ id: '', umbral: '' });
   const [umbralLoading, setUmbralLoading] = useState(false);
   const [umbralResult, setUmbralResult]   = useState(null);
@@ -80,6 +171,7 @@ export default function Inventario() {
       setUmbralResult({ type: 'success', data });
       addToast('Umbral de stock actualizado.', 'success');
       setUmbralForm({ id: '', umbral: '' });
+      loadInsumos();
     } catch (err) {
       setUmbralResult({ type: 'error', msg: err.message });
       addToast(err.message, 'error');
@@ -88,11 +180,20 @@ export default function Inventario() {
     }
   };
 
+  const insumosSeleccionado = insumos.find((i) => String(i.id_insumo ?? i.id) === String(umbralForm.id));
+
   const TABS = [
-    ...(isAdmin ? [{ id: 'alertas', label: 'Alertas de Stock' }] : []),
+    ...(isAdmin ? [
+      { id: 'insumos',     label: 'Insumos' },
+      { id: 'stockCritico', label: 'Stock Crítico' },
+      { id: 'historial',   label: 'Historial' },
+      { id: 'alertas',     label: 'Alertas' },
+    ] : []),
     { id: 'consumo', label: 'Registrar Consumo' },
     ...(isAdmin ? [{ id: 'umbral', label: 'Actualizar Umbral' }] : []),
   ];
+
+  const fmt = (n) => Number(n || 0).toLocaleString('es-CO');
 
   return (
     <>
@@ -102,22 +203,25 @@ export default function Inventario() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.75rem', borderBottom: '1px solid var(--c-border)', paddingBottom: '0' }}>
+      <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '1.75rem', borderBottom: '1px solid var(--c-border)', paddingBottom: '0', flexWrap: 'wrap' }}>
         {TABS.map((t) => (
           <button
             key={t.id}
-            onClick={() => { setTab(t.id); if (t.id === 'alertas' && !alertsLoaded) loadAlerts(); }}
+            onClick={() => handleTabChange(t.id)}
             style={{
               padding: '0.6rem 1.25rem',
               fontSize: '0.78rem',
               fontWeight: 500,
               letterSpacing: '0.06em',
               color: tab === t.id ? 'var(--c-gold)' : 'var(--c-text-2)',
-              borderBottom: tab === t.id ? '2px solid var(--c-gold)' : '2px solid transparent',
               marginBottom: '-1px',
               transition: 'all 0.2s ease',
               background: 'none',
               cursor: 'pointer',
+              border: 'none',
+              borderBottomWidth: 2,
+              borderBottomStyle: 'solid',
+              borderBottomColor: tab === t.id ? 'var(--c-gold)' : 'transparent',
             }}
           >
             {t.label}
@@ -125,44 +229,90 @@ export default function Inventario() {
         ))}
       </div>
 
-      {/* ── ALERTS TAB ────────────────────────────── */}
-      {tab === 'alertas' && isAdmin && (
+      {/* â”€â”€ INSUMOS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {tab === 'insumos' && isAdmin && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
-            <button className="btn btn-outline btn-sm" onClick={loadAlerts} disabled={alertsLoading}>
-              {alertsLoading ? 'Cargando…' : '↻ Actualizar'}
+            <button className="btn btn-outline btn-sm" onClick={loadInsumos} disabled={insumosLoading}>
+              {insumosLoading ? 'Cargando…' : 'Actualizar'}
             </button>
           </div>
-
-          {alertsLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
-
-          {!alertsLoading && alertsLoaded && alerts.length === 0 && (
-            <div className="empty-state">
-              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.2" viewBox="0 0 24 24">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-              <p>Todos los insumos tienen stock suficiente.</p>
-            </div>
+          {insumosLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
+          {!insumosLoading && insumos.length === 0 && (
+            <div className="empty-state"><p>No hay insumos registrados.</p></div>
           )}
-
-          {!alertsLoading && alerts.length > 0 && (
+          {!insumosLoading && insumos.length > 0 && (
             <div className="table-wrap">
               <table className="table">
                 <thead>
                   <tr>
-                    <th>Insumo</th>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Categoría</th>
+                    <th>Unidad</th>
                     <th>Stock actual</th>
                     <th>Umbral mínimo</th>
-                    <th>Criticidad</th>
+                    <th>Estado</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {alerts.map((a) => (
-                    <tr key={a.id_insumo ?? a.insumoId ?? a.nombre}>
+                  {insumos.map((ins) => {
+                    const id = ins.id_insumo ?? ins.id;
+                    const stock = ins.stock_actual ?? ins.stockActual ?? 0;
+                    const umbral = ins.stock_minimo ?? ins.umbral ?? 0;
+                    const critico = stock <= umbral;
+                    return (
+                      <tr key={id}>
+                        <td>{id}</td>
+                        <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{ins.nombre}</td>
+                        <td>{ins.categoria}</td>
+                        <td>{ins.unidad_medida}</td>
+                        <td>{fmt(stock)}</td>
+                        <td>{fmt(umbral)}</td>
+                        <td>
+                          {critico
+                            ? <span className="badge crit-critica">Crítico</span>
+                            : <span className="badge badge-success">✓ OK</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* â”€â”€ STOCK CRÍTICO TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {tab === 'stockCritico' && isAdmin && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button className="btn btn-outline btn-sm" onClick={loadStockCritico} disabled={stockLoading}>
+              {stockLoading ? 'Cargando…' : 'Actualizar'}
+            </button>
+          </div>
+          {stockLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
+          {!stockLoading && stockLoaded && stockCritico.length === 0 && (
+            <div className="empty-state">
+              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.2" viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <p>Todos los insumos tienen stock suficiente.</p>
+            </div>
+          )}
+          {!stockLoading && stockCritico.length > 0 && (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr><th>Insumo</th><th>Stock actual</th><th>Umbral mínimo</th><th>Criticidad</th></tr>
+                </thead>
+                <tbody>
+                  {stockCritico.map((a) => (
+                    <tr key={a.id_insumo ?? a.nombre}>
                       <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{a.nombre}</td>
-                      <td>{a.stock_actual ?? a.stockActual}</td>
-                      <td>{a.stock_minimo ?? a.umbral}</td>
+                      <td>{fmt(a.stock_actual ?? a.stockActual)}</td>
+                      <td>{fmt(a.stock_minimo ?? a.umbral)}</td>
                       <td>
                         <span className={`badge ${CRITICIDAD_CLASS[a.criticidad] ?? 'badge-info'}`}>
                           {CRITICIDAD_LABEL[a.criticidad] ?? a.criticidad}
@@ -177,32 +327,135 @@ export default function Inventario() {
         </>
       )}
 
-      {/* ── CONSUMO TAB ───────────────────────────── */}
+      {/* â”€â”€ HISTORIAL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {tab === 'historial' && isAdmin && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button className="btn btn-outline btn-sm" onClick={loadHistorial} disabled={histLoading}>
+              {histLoading ? 'Cargando…' : 'â†» Actualizar'}
+            </button>
+          </div>
+          {histLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
+          {!histLoading && histLoaded && historial.length === 0 && (
+            <div className="empty-state"><p>No hay registros en el historial.</p></div>
+          )}
+          {!histLoading && historial.length > 0 && (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Fecha</th>
+                    <th>Insumo</th>
+                    <th>Cantidad</th>
+                    <th>Tarea</th>
+                    <th>Usuario</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historial.map((h, i) => (
+                    <tr key={i}>
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        {h.fecha ? new Date(h.fecha).toLocaleString('es-CO') : '—'}
+                      </td>
+                      <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{h.nombre_insumo ?? h.nombre}</td>
+                      <td>{h.cantidad}</td>
+                      <td>{h.tipo_tarea ?? h.tipoTarea ?? '—'}</td>
+                      <td>{h.usuario ?? h.nombre_usuario ?? '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* â”€â”€ ALERTS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {tab === 'alertas' && isAdmin && (
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
+            <button className="btn btn-outline btn-sm" onClick={loadAlerts} disabled={alertsLoading}>
+              {alertsLoading ? 'Cargando…' : 'â†» Actualizar'}
+            </button>
+          </div>
+          {alertsLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
+          {!alertsLoading && alertsLoaded && alerts.length === 0 && (
+            <div className="empty-state">
+              <svg width="48" height="48" fill="none" stroke="currentColor" strokeWidth="1.2" viewBox="0 0 24 24">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+              </svg>
+              <p>No hay alertas activas de stock.</p>
+            </div>
+          )}
+          {!alertsLoading && alerts.length > 0 && (
+            <div className="table-wrap">
+              <table className="table">
+                <thead>
+                  <tr><th>Insumo</th><th>Stock actual</th><th>Umbral mínimo</th><th>Criticidad</th></tr>
+                </thead>
+                <tbody>
+                  {alerts.map((a) => (
+                    <tr key={a.id_insumo ?? a.nombre}>
+                      <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{a.nombre}</td>
+                      <td>{fmt(a.stock_actual ?? a.stockActual)}</td>
+                      <td>{fmt(a.stock_minimo ?? a.umbral)}</td>
+                      <td>
+                        <span className={`badge ${CRITICIDAD_CLASS[a.criticidad] ?? 'badge-info'}`}>
+                          {CRITICIDAD_LABEL[a.criticidad] ?? a.criticidad}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* â”€â”€ CONSUMO TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'consumo' && (
         <div style={{ maxWidth: 520 }}>
           <div className="card">
             <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Registrar Consumo de Insumo</p>
             <span className="gold-line" />
             <form onSubmit={handleConsumo} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">Insumo</label>
+                <select className="form-select" value={consumoForm.insumoId} onChange={setC('insumoId')} required>
+                  <option value="">— Seleccione un insumo —</option>
+                  {insumos.map((ins) => {
+                    const id = ins.id_insumo ?? ins.id;
+                    return (
+                      <option key={id} value={id}>
+                        {ins.nombre} · {ins.categoria} ({ins.unidad_medida}) · Stock: {fmt(ins.stock_actual ?? ins.stockActual ?? 0)}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">ID o número de Habitación</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ej. 3 o 201"
+                  value={consumoForm.habitacionId}
+                  onChange={setC('habitacionId')}
+                  required
+                />
+              </div>
               <div className="form-grid">
-                <div className="form-group">
-                  <label className="form-label">ID Insumo</label>
-                  <input type="number" className="form-input" placeholder="ID del insumo" min="1" value={consumoForm.insumoId} onChange={setC('insumoId')} required />
-                </div>
                 <div className="form-group">
                   <label className="form-label">Cantidad</label>
                   <input type="number" className="form-input" placeholder="Unidades consumidas" min="1" value={consumoForm.cantidad} onChange={setC('cantidad')} required />
                 </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label">ID Habitación</label>
-                <input type="number" className="form-input" placeholder="ID de la habitación" min="1" value={consumoForm.habitacionId} onChange={setC('habitacionId')} required />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Tipo de tarea</label>
-                <select className="form-select" value={consumoForm.tipoTarea} onChange={setC('tipoTarea')}>
-                  {TAREAS.map((t) => <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>)}
-                </select>
+                <div className="form-group">
+                  <label className="form-label">Tipo de tarea</label>
+                  <select className="form-select" value={consumoForm.tipoTarea} onChange={setC('tipoTarea')}>
+                    {TAREAS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                </div>
               </div>
               <div className="form-group">
                 <label className="form-label">Observaciones (opcional)</label>
@@ -220,7 +473,7 @@ export default function Inventario() {
         </div>
       )}
 
-      {/* ── UMBRAL TAB ────────────────────────────── */}
+      {/* â”€â”€ UMBRAL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       {tab === 'umbral' && isAdmin && (
         <div style={{ maxWidth: 400 }}>
           <div className="card">
@@ -231,12 +484,22 @@ export default function Inventario() {
             </p>
             <form onSubmit={handleUmbral} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label">ID Insumo</label>
-                <input type="number" className="form-input" placeholder="ID del insumo" min="1" value={umbralForm.id} onChange={setU('id')} required />
+                <label className="form-label">Insumo</label>
+                <select className="form-select" value={umbralForm.id} onChange={setU('id')} required>
+                  <option value="">— Seleccione un insumo —</option>
+                  {insumos.map((ins) => {
+                    const id = ins.id_insumo ?? ins.id;
+                    return (
+                      <option key={id} value={id}>{ins.nombre} · {ins.categoria}</option>
+                    );
+                  })}
+                </select>
               </div>
               <div className="form-group">
-                <label className="form-label">Nuevo Umbral</label>
-                <input type="number" className="form-input" placeholder="Unidades mínimas" min="1" value={umbralForm.umbral} onChange={setU('umbral')} required />
+                <label className="form-label">
+                  Nuevo umbral mínimo ({insumosSeleccionado?.unidad ?? 'unidades'})
+                </label>
+                <input type="number" className="form-input" placeholder="Cantidad mínima de stock" min="1" value={umbralForm.umbral} onChange={setU('umbral')} required />
               </div>
 
               {umbralResult?.type === 'success' && <div className="alert alert-success">✓ Umbral actualizado.</div>}

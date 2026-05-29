@@ -86,7 +86,22 @@ export default function Reportes() {
   // Normalize ingresos data for pie chart
   const ingChartData = (() => {
     if (!ingData) return [];
-    const flat = ingData.data ?? ingData.ingresos ?? [];
+    let flat = [];
+    if (Array.isArray(ingData.data)) {
+      flat = ingData.data;
+    } else if (ingData.data && typeof ingData.data === 'object') {
+      const habs = (ingData.data.habitaciones ?? []).map((h) => ({
+        tipo_habitacion: h.tipo_habitacion,
+        ingresos: h.ingresos,
+      }));
+      const servs = (ingData.data.servicios_adicionales ?? []).map((s) => ({
+        categoria: s.tipo_servicio,
+        ingresos: s.ingresos,
+      }));
+      flat = [...habs, ...servs];
+    } else if (Array.isArray(ingData.ingresos)) {
+      flat = ingData.ingresos;
+    }
     // Could be grouped by tipo_habitacion + categoria
     const map = {};
     for (const r of flat) {
@@ -100,9 +115,18 @@ export default function Reportes() {
 
   return (
     <>
-      <div className="page-header">
-        <h1>Reportes Ejecutivos</h1>
-        <p>Análisis mensual de ocupación e ingresos por tipo de habitación</p>
+      <div className="page-header" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+        <div>
+          <h1>Reportes Ejecutivos</h1>
+          <p>Análisis mensual de ocupación e ingresos por tipo de habitación</p>
+        </div>
+        <button
+          className="btn btn-outline btn-sm no-print"
+          onClick={() => window.print()}
+          title="Exportar reporte como PDF usando el diálogo de impresión del navegador"
+        >
+          ↓ Exportar PDF
+        </button>
       </div>
 
       {/* Tabs */}
@@ -277,7 +301,7 @@ export default function Reportes() {
                       <thead>
                         <tr>
                           <th>Categoría</th>
-                          <th>Total (USD)</th>
+                          <th>Total (COP)</th>
                           <th>%</th>
                         </tr>
                       </thead>

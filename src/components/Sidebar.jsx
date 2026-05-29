@@ -1,5 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
+import { api } from '../services/api.js';
 
 const ROLE_LABELS = {
   Administrador: 'Administrador',
@@ -12,7 +14,7 @@ const ROLE_LABELS = {
 
 const LIMPEZA_ROLES = ['PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'];
 
-function NavItem({ to, icon, label }) {
+function NavItem({ to, icon, label, badge }) {
   return (
     <NavLink
       to={to}
@@ -20,6 +22,7 @@ function NavItem({ to, icon, label }) {
     >
       {icon}
       <span>{label}</span>
+      {badge > 0 && <span className="sidebar-badge">{badge}</span>}
     </NavLink>
   );
 }
@@ -28,15 +31,78 @@ export default function Sidebar() {
   const { auth, logout } = useAuth();
   const navigate = useNavigate();
   const rol = auth?.rol ?? '';
-  const isAdmin      = rol === 'Administrador';
-  const isRecep      = rol === 'Recepcionista';
-  const isHuesped    = rol === 'Huesped';
-  const isLimpieza   = LIMPEZA_ROLES.includes(rol);
+  const isAdmin = rol === 'Administrador';
+
+  const [alertCount, setAlertCount] = useState(0);
+  useEffect(() => {
+    if (!isAdmin || !auth?.token) return;
+    api.inventario.alertas(auth.token)
+      .then(data => setAlertCount((data.data ?? data.alertas ?? []).length))
+      .catch(() => {});
+  }, [isAdmin, auth?.token]);
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
+
+  const ROLES = {
+    admin: ['Administrador'],
+    recepcionista: ['Recepcionista'],
+    limpieza: ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'],
+    tecnico: ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'],
+    huesped: ['Huesped', 'Huésped'],
+  };
+
+  const MENU_SECTIONS = [
+    {
+      label: 'General',
+      items: [
+        { to: '/dashboard/overview', label: 'Panel General', icon: <IconGrid />, roles: ROLES.admin },
+        { to: '/dashboard/disponibilidad', label: 'Disponibilidad', icon: <IconCalendar />, roles: [...ROLES.recepcionista, ...ROLES.huesped] },
+      ]
+    },
+    {
+      label: 'Reservas',
+      items: [
+        { to: '/dashboard/reservas', label: 'Reservas', icon: <IconBook />, roles: [...ROLES.recepcionista, ...ROLES.huesped] }
+      ]
+    },
+    {
+      label: 'Operaciones',
+      items: [
+        { to: '/dashboard/checkin', label: 'Check-In', icon: <IconLogin />, roles: ROLES.recepcionista },
+        { to: '/dashboard/checkout', label: 'Check-Out', icon: <IconLogout />, roles: ROLES.recepcionista },
+        { to: '/dashboard/consumos', label: 'Consumos', icon: <IconCoffee />, roles: ROLES.recepcionista },
+      ]
+    },
+    {
+      label: 'Habitaciones',
+      items: [
+        { to: '/dashboard/habitaciones', label: 'Estado de Hab.', icon: <IconBed />, roles: [...ROLES.admin, ...ROLES.recepcionista, ...ROLES.limpieza, ...ROLES.tecnico] }
+      ]
+    },
+    {
+      label: 'Inventario',
+      items: [
+        { to: '/dashboard/inventario', label: 'Inventario', icon: <IconBox />, roles: [...ROLES.admin, ...ROLES.limpieza], hasBadge: true }
+      ]
+    },
+    {
+      label: 'Administración',
+      items: [
+        { to: '/dashboard/reportes', label: 'Reportes', icon: <IconChart />, roles: ROLES.admin },
+        { to: '/dashboard/tarifas', label: 'Tarifas', icon: <IconTag />, roles: ROLES.admin },
+        { to: '/dashboard/auditoria', label: 'Auditoría', icon: <IconShield />, roles: ROLES.admin },
+      ]
+    },
+    {
+      label: 'Mi Cuenta',
+      items: [
+        { to: '/dashboard/cuenta', label: 'Mi Cuenta', icon: <IconUser />, roles: ROLES.huesped }
+      ]
+    }
+  ];
 
   return (
     <aside className="dashboard-sidebar">
@@ -49,47 +115,24 @@ export default function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        <div className="sidebar-nav-section">
-          <div className="sidebar-nav-label">General</div>
-          <NavItem to="/dashboard/disponibilidad" label="Disponibilidad" icon={<IconCalendar />} />
-        </div>
-
-        {(isAdmin || isRecep || isHuesped) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Reservas</div>
-            <NavItem to="/dashboard/reservas" label="Reservas" icon={<IconBook />} />
-          </div>
-        )}
-
-        {isRecep && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Operaciones</div>
-            <NavItem to="/dashboard/checkin"  label="Check-In"  icon={<IconLogin />} />
-            <NavItem to="/dashboard/checkout" label="Check-Out" icon={<IconLogout />} />
-            <NavItem to="/dashboard/consumos" label="Consumos"  icon={<IconCoffee />} />
-          </div>
-        )}
-
-        {(isAdmin || isRecep || isLimpieza) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Habitaciones</div>
-            <NavItem to="/dashboard/habitaciones" label="Estado de Hab." icon={<IconBed />} />
-          </div>
-        )}
-
-        {(isAdmin || isLimpieza) && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Inventario</div>
-            <NavItem to="/dashboard/inventario" label="Inventario" icon={<IconBox />} />
-          </div>
-        )}
-
-        {isAdmin && (
-          <div className="sidebar-nav-section">
-            <div className="sidebar-nav-label">Administración</div>
-            <NavItem to="/dashboard/reportes" label="Reportes" icon={<IconChart />} />
-          </div>
-        )}
+        {MENU_SECTIONS.map((section) => {
+          const visibleItems = section.items.filter(item => item.roles.includes(rol));
+          if (visibleItems.length === 0) return null;
+          return (
+            <div className="sidebar-nav-section" key={section.label}>
+              <div className="sidebar-nav-label">{section.label}</div>
+              {visibleItems.map((item) => (
+                <NavItem
+                  key={item.to}
+                  to={item.to}
+                  label={item.label}
+                  icon={item.icon}
+                  badge={item.hasBadge && isAdmin ? alertCount : 0}
+                />
+              ))}
+            </div>
+          );
+        })}
       </nav>
 
       <div className="sidebar-footer">
@@ -111,3 +154,7 @@ const IconCoffee   = () => (<svg {...s} viewBox="0 0 24 24"><path d="M18 8h1a4 4
 const IconBed      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M2 4v16"/><path d="M2 8h18a2 2 0 0 1 2 2v6"/><path d="M2 17h20"/><path d="M6 8v9"/></svg>);
 const IconBox      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>);
 const IconChart    = () => (<svg {...s} viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/><line x1="2" y1="20" x2="22" y2="20"/></svg>);
+const IconTag      = () => (<svg {...s} viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>);
+const IconShield   = () => (<svg {...s} viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>);
+const IconUser     = () => (<svg {...s} viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>);
+const IconGrid     = () => (<svg {...s} viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>);

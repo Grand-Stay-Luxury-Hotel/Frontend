@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
@@ -7,6 +7,7 @@ const ESTADOS = [
   { value: 'disponible',    label: 'Disponible',    badge: 'badge-success' },
   { value: 'ocupada',       label: 'Ocupada',        badge: 'badge-error'   },
   { value: 'limpieza',      label: 'En Limpieza',    badge: 'badge-warning' },
+  { value: 'sucia',         label: 'Sucia',          badge: 'badge-warning' },
   { value: 'mantenimiento', label: 'Mantenimiento',  badge: 'badge-info'    },
   { value: 'bloqueada',     label: 'Bloqueada',      badge: 'badge-gold'    },
 ];
@@ -15,26 +16,44 @@ export default function Habitaciones() {
   const { auth } = useAuth();
   const { addToast } = useToast();
 
-  const [form, setForm] = useState({ id: '', estado: 'limpieza', observaciones: '' });
+  const [habitaciones, setHabitaciones] = useState([]);
+  const [loadingHabs, setLoadingHabs] = useState(true);
+
+  const [form, setForm] = useState({ numero: '', estado: 'limpieza', observaciones: '' });
   const [loading, setLoading] = useState(false);
-  const [result, setResult]   = useState(null);
+  const [result, setResult] = useState(null);
+
+  const cargar = useCallback(async () => {
+    setLoadingHabs(true);
+    try {
+      const res = await api.habitaciones.listar(auth.token);
+      setHabitaciones(res.data ?? res);
+    } catch {
+      addToast('No se pudieron cargar las habitaciones.', 'error');
+    } finally {
+      setLoadingHabs(false);
+    }
+  }, [auth.token, addToast]);
+
+  useEffect(() => { cargar(); }, [cargar]);
 
   const set = (f) => (e) => setForm((prev) => ({ ...prev, [f]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.id) { addToast('Ingrese el ID de la habitación.', 'warning'); return; }
+    if (!form.numero) { addToast('Ingrese el número de habitación.', 'warning'); return; }
     setLoading(true);
     setResult(null);
     try {
-      const payload = {
-        estado: form.estado,
-        ...(form.observaciones ? { observaciones: form.observaciones } : {}),
-      };
-      const data = await api.habitaciones.estado(form.id, payload, auth.token);
-      setResult({ type: 'success', data, estado: form.estado });
-      addToast(`Estado actualizado a "${form.estado}".`, 'success');
-      setForm({ id: '', estado: 'limpieza', observaciones: '' });
+      const data = await api.habitaciones.estadoPorNumero(
+        form.numero,
+        form.estado,
+        auth.token,
+      );
+      setResult({ type: 'success', data, estado: form.estado, numero: form.numero });
+      addToast(`Hab. ${form.numero} actualizada a "${form.estado}".`, 'success');
+      setForm({ numero: '', estado: 'limpieza', observaciones: '' });
+      await cargar();
     } catch (err) {
       setResult({ type: 'error', msg: err.message });
       addToast(err.message, 'error');
@@ -53,22 +72,28 @@ export default function Habitaciones() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', maxWidth: 800 }}>
-        {/* Form */}
+        {/* â”€â”€ Formulario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="card">
           <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Actualizar Estado</p>
           <span className="gold-line" />
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
             <div className="form-group">
-              <label className="form-label">ID de Habitación</label>
-              <input
-                type="number"
-                className="form-input"
-                placeholder="Ej. 101"
-                min="1"
-                value={form.id}
-                onChange={set('id')}
-                required
-              />
+              <label className="form-label">Número de Habitación</label>
+              {loadingHabs ? (
+                <input className="form-input" placeholder="Cargando habitaciones..." disabled />
+              ) : (
+                <select className="form-select" value={form.numero} onChange={set('numero')} required>
+                  <option value="">— Seleccione una habitación —</option>
+                  {habitaciones.map((h) => {
+                    const numeroHabitacion = h.numero_habitacion ?? h.numero ?? '';
+                    return (
+                      <option key={h.id_habitacion} value={numeroHabitacion}>
+                        Hab. {numeroHabitacion} · {h.tipo_nombre} · Piso {h.piso} · {h.estado}
+                      </option>
+                    );
+                  })}
+                </select>
+              )}
             </div>
 
             <div className="form-group">
@@ -101,7 +126,7 @@ export default function Habitaciones() {
 
             {result?.type === 'success' && (
               <div className="alert alert-success">
-                ✓ Habitación #{result.data.id_habitacion ?? form.id} → <strong>{result.estado}</strong>
+                ✓ Hab. {result.numero} actualizada a <strong>{result.estado}</strong>
               </div>
             )}
             {result?.type === 'error' && <div className="alert alert-error">{result.msg}</div>}
@@ -112,7 +137,7 @@ export default function Habitaciones() {
           </form>
         </div>
 
-        {/* Estado reference card */}
+        {/* â”€â”€ Guía de estados â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
         <div className="card">
           <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Guía de Estados</p>
           <span className="gold-line" />
@@ -121,6 +146,7 @@ export default function Habitaciones() {
               { estado: 'disponible',    desc: 'La habitación está lista para recibir huéspedes.' },
               { estado: 'ocupada',       desc: 'Huésped activo. No asignar a nuevas reservas.' },
               { estado: 'limpieza',      desc: 'En proceso de limpieza o preparación.' },
+              { estado: 'sucia',         desc: 'Requiere limpieza antes de volver a estar disponible.' },
               { estado: 'mantenimiento', desc: 'Fuera de servicio por reparación o revisión técnica.' },
               { estado: 'bloqueada',     desc: 'Bloqueada administrativamente por gestión interna.' },
             ].map((e) => {
@@ -134,6 +160,52 @@ export default function Habitaciones() {
             })}
           </div>
         </div>
+      </div>
+
+      {/* â”€â”€ Mapa de habitaciones â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      <div style={{ marginTop: '2rem', maxWidth: 900 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+          <p className="eyebrow">Mapa de Habitaciones</p>
+          <button className="btn btn-ghost btn-sm" onClick={cargar} disabled={loadingHabs}>
+            {loadingHabs ? 'Actualizando…' : '↻ Actualizar'}
+          </button>
+        </div>
+        {loadingHabs ? (
+          <p style={{ color: 'var(--c-text-2)', fontSize: '0.85rem' }}>Cargando habitaciones...</p>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))', gap: '0.75rem' }}>
+            {habitaciones.map((h) => {
+              const meta = ESTADOS.find((e) => e.value === h.estado);
+              const numeroHabitacion = h.numero_habitacion ?? h.numero ?? '';
+              const isSelected = form.numero === String(numeroHabitacion);
+              return (
+                <button
+                  key={h.id_habitacion}
+                  type="button"
+                  onClick={() => setForm((f) => ({ ...f, numero: String(numeroHabitacion) }))}
+                  className="card"
+                  style={{
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    padding: '0.85rem',
+                    outline: isSelected ? '2px solid var(--c-gold)' : 'none',
+                    transition: 'outline 0.15s',
+                  }}
+                  title="Seleccionar habitación"
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.35rem' }}>
+                    <span style={{ fontFamily: 'var(--f-heading)', fontSize: '1.15rem', color: 'var(--c-text)', fontWeight: 700 }}>{numeroHabitacion}</span>
+                    <span className={`badge ${meta?.badge ?? 'badge-gold'}`} style={{ fontSize: '0.58rem' }}>
+                      {meta?.label ?? h.estado}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.72rem', color: 'var(--c-text-2)', margin: 0 }}>{h.tipo_nombre}</p>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--c-text-3)', margin: 0 }}>Piso {h.piso}</p>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
     </>
   );
