@@ -39,25 +39,45 @@ export default function Disponibilidad() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [accessDenied, setAccessDenied] = useState(false);
+
+  const canQuery = auth?.rol === 'Recepcionista' || auth?.rol === 'Huesped';
 
   const set = (field) => (e) => setFilters((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSearch = async (e) => {
     e.preventDefault();
+    if (!canQuery) {
+      setAccessDenied(true);
+      return;
+    }
     if (!filters.fechaEntrada || !filters.fechaSalida) {
       addToast('Debe seleccionar fechas de entrada y salida.', 'warning');
       return;
     }
     setLoading(true);
     setSearched(true);
+    setAccessDenied(false);
     try {
       const params = { fechaEntrada: filters.fechaEntrada, fechaSalida: filters.fechaSalida };
       if (filters.tipo)      params.tipo      = filters.tipo;
       if (filters.capacidad) params.capacidad = filters.capacidad;
       const data = await api.disponibilidad.consultar(params, auth.token);
-      setRooms(data.habitaciones ?? data ?? []);
+      let habitaciones = data.habitaciones ?? data ?? [];
+      // Filtro exacto de capacidad en cliente: si el usuario pide N personas,
+      // muestra solo habitaciones con esa capacidad exacta.
+      if (filters.capacidad) {
+        const cap = parseInt(filters.capacidad, 10);
+        habitaciones = habitaciones.filter((r) => r.capacidad_max === cap);
+      }
+      setRooms(habitaciones);
     } catch (err) {
-      addToast(err.message ?? 'Error al consultar disponibilidad', 'error');
+      if (err.status === 403) {
+        setAccessDenied(true);
+        setSearched(false);
+      } else {
+        addToast(err.message ?? 'Error al consultar disponibilidad', 'error');
+      }
       setRooms([]);
     } finally {
       setLoading(false);
@@ -108,14 +128,15 @@ export default function Disponibilidad() {
               <label className="form-label">Tipo de habitación</label>
               <select className="form-select" value={filters.tipo} onChange={set('tipo')}>
                 <option value="">Todos los tipos</option>
-                <option value="Clásica">Clásica</option>
-                <option value="Suite Ejecutiva">Suite Ejecutiva</option>
-                <option value="Suite Presidencial">Suite Presidencial</option>
+                <option value="Individual">Individual</option>
+                <option value="Doble">Doble</option>
+                <option value="Suite">Suite</option>
+                <option value="Familiar">Familiar</option>
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Capacidad mínima</label>
-              <input type="number" className="form-input" placeholder="Ej. 2" min="1" value={filters.capacidad} onChange={set('capacidad')} />
+              <label className="form-label">Personas</label>
+              <input type="number" className="form-input" placeholder="Ej. 2" min="1" max="4" value={filters.capacidad} onChange={set('capacidad')} />
             </div>
           </div>
           <button type="submit" className="btn btn-gold" disabled={loading}>
@@ -123,6 +144,13 @@ export default function Disponibilidad() {
           </button>
         </form>
       </div>
+
+      {/* Acceso denegado para roles sin permiso (ej. Administrador) */}
+      {accessDenied && (
+        <div className="alert alert-warning" style={{ maxWidth: 600, marginTop: '1rem' }}>
+          <strong>Acceso restringido.</strong> La consulta de disponibilidad está disponible para Recepcionistas y Huéspedes. El perfil <strong>{auth?.rol}</strong> no tiene acceso a este módulo.
+        </div>
+      )}
 
       {/* Results */}
       {loading && <div className="spinner-wrap"><div className="spinner" /></div>}

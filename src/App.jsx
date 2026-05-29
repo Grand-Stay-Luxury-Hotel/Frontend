@@ -1,7 +1,9 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext.jsx';
-import { ToastProvider } from './components/Toast.jsx';
+import { ToastProvider, useToast } from './components/Toast.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
+import { useAuth } from './context/AuthContext.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Registro from './pages/Registro.jsx';
@@ -14,6 +16,10 @@ import Consumos from './pages/Consumos.jsx';
 import Inventario from './pages/Inventario.jsx';
 import Reportes from './pages/Reportes.jsx';
 import Habitaciones from './pages/Habitaciones.jsx';
+import Tarifas from './pages/Tarifas.jsx';
+import CuentaHuesped from './pages/CuentaHuesped.jsx';
+import Auditoria from './pages/Auditoria.jsx';
+import DashboardAdmin from './pages/DashboardAdmin.jsx';
 
 const ROLES = {
   recepcionista: ['Recepcionista'],
@@ -25,11 +31,37 @@ const ROLES = {
   recepAdminLimpieza: ['Recepcionista', 'Administrador', 'PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'],
 };
 
+const LIMPEZA_ROLES = ['PersonalLimpieza', 'Personal de Limpieza', 'Limpieza'];
+
+function DashboardIndex() {
+  const { auth } = useAuth();
+  const rol = auth?.rol ?? '';
+  if (rol === 'Administrador') return <Navigate to="overview" replace />;
+  if (LIMPEZA_ROLES.includes(rol)) return <Navigate to="habitaciones" replace />;
+  return <Navigate to="disponibilidad" replace />;
+}
+
+function IdleLogoutListener() {
+  const { addToast } = useToast();
+  useEffect(() => {
+    const handler = () => addToast('Sesión cerrada por inactividad (15 min).', 'warning');
+    window.addEventListener('gs:idleLogout', handler);
+    return () => window.removeEventListener('gs:idleLogout', handler);
+  }, [addToast]);
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <BrowserRouter>
+        <IdleLogoutListener />
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
@@ -42,8 +74,16 @@ export default function App() {
                 </ProtectedRoute>
               }
             >
-              <Route index element={<Navigate to="disponibilidad" replace />} />
+              <Route index element={<DashboardIndex />} />
               <Route path="disponibilidad" element={<Disponibilidad />} />
+              <Route
+                path="overview"
+                element={
+                  <ProtectedRoute roles={ROLES.admin}>
+                    <DashboardAdmin />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="reservas"
                 element={
@@ -97,6 +137,30 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={ROLES.admin}>
                     <Reportes />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="tarifas"
+                element={
+                  <ProtectedRoute roles={ROLES.admin}>
+                    <Tarifas />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="cuenta"
+                element={
+                  <ProtectedRoute roles={['Huesped']}>
+                    <CuentaHuesped />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="auditoria"
+                element={
+                  <ProtectedRoute roles={ROLES.admin}>
+                    <Auditoria />
                   </ProtectedRoute>
                 }
               />

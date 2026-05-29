@@ -35,7 +35,7 @@ export default function Login() {
       const msg = err?.message ?? 'Error al iniciar sesión';
       if (msg.toLowerCase().includes('otp')) {
         setShowOtp(true);
-        setError('Se requiere código OTP de administrador.');
+        setError('');
       } else {
         setError(msg);
       }
@@ -63,49 +63,67 @@ export default function Login() {
           <div className="logo">Grand <span>Stay</span></div>
         </div>
 
-        <h1 className="login-title">Bienvenido</h1>
-        <p className="login-sub">Acceda a su portal de gestión hotelera</p>
+        <h1 className="login-title">{showOtp ? 'Verificación adicional' : 'Bienvenido'}</h1>
+        <p className="login-sub">{showOtp ? 'Ingrese el código de un solo uso enviado al administrador' : 'Acceda a su portal de gestión hotelera'}</p>
 
         <form className="login-form" onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Correo electrónico</label>
-            <input
-              type="email"
-              className="form-input"
-              placeholder="usuario@grandstay.com"
-              value={form.usuario}
-              onChange={set('usuario')}
-              autoComplete="email"
-              required
-            />
-          </div>
+          {!showOtp && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Correo electrónico</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  placeholder="usuario@grandstay.com"
+                  value={form.usuario}
+                  onChange={set('usuario')}
+                  autoComplete="email"
+                  required
+                />
+              </div>
 
-          <div className="form-group">
-            <label className="form-label">Contraseña</label>
-            <input
-              type="password"
-              className="form-input"
-              placeholder="••••••••"
-              value={form.password}
-              onChange={set('password')}
-              autoComplete="current-password"
-              required
-            />
-          </div>
+              <div className="form-group">
+                <label className="form-label">Contraseña</label>
+                <input
+                  type="password"
+                  className="form-input"
+                  placeholder="••••••••"
+                  value={form.password}
+                  onChange={set('password')}
+                  autoComplete="current-password"
+                  required
+                />
+              </div>
+            </>
+          )}
 
           {showOtp && (
-            <div className="form-group">
-              <label className="form-label">Código OTP (Administrador)</label>
-              <input
-                type="text"
-                className="form-input"
-                placeholder="000000"
-                value={form.otp}
-                onChange={set('otp')}
-                maxLength={8}
-                autoFocus
-              />
-            </div>
+            <>
+              <div style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-border)', borderRadius: 'var(--r-md)', padding: '0.75rem 1rem', fontSize: '0.82rem', color: 'var(--c-text-2)', marginBottom: '0.25rem' }}>
+                Credenciales verificadas. Complete la autenticación de dos factores para continuar.
+              </div>
+              <div className="form-group">
+                <label className="form-label">Código OTP</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="000000"
+                  value={form.otp}
+                  onChange={set('otp')}
+                  maxLength={8}
+                  autoFocus
+                  autoComplete="one-time-code"
+                  inputMode="numeric"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => { setShowOtp(false); setError(''); setForm(f => ({ ...f, otp: '' })); }}
+                style={{ background: 'none', color: 'var(--c-text-2)', fontSize: '0.78rem', cursor: 'pointer', textAlign: 'left', padding: 0, textDecoration: 'underline' }}
+              >
+                ← Volver a credenciales
+              </button>
+            </>
           )}
 
           {error && <div className="alert alert-error">{error}</div>}
@@ -115,7 +133,7 @@ export default function Login() {
             className="btn btn-gold btn-full"
             disabled={loading}
           >
-            {loading ? 'Iniciando sesión…' : 'Iniciar Sesión'}
+            {loading ? (showOtp ? 'Verificando…' : 'Iniciando sesión…') : (showOtp ? 'Verificar código' : 'Iniciar Sesión')}
           </button>
         </form>
 
