@@ -24,6 +24,14 @@ const ACCION_LABEL = {
   ACCESS_DENIED: 'Acceso denegado',
 };
 
+const METADATA_FIELDS = new Set([
+  'hash_repositorio_externo',
+  'hash_integridad',
+  'timestamp_auditoria',
+  'repositorio_integridad',
+  'accion_negocio'
+]);
+
 function formatJsonValue(val) {
   if (!val) return null;
   if (typeof val === 'object') return val;
@@ -32,6 +40,17 @@ function formatJsonValue(val) {
   } catch {
     return null;
   }
+}
+
+function formatDisplayValue(val) {
+  if (val === null || val === undefined || val === '') return '—';
+  if (typeof val === 'object') {
+    if (Object.keys(val).length === 0) return '—';
+    return JSON.stringify(val);
+  }
+  const str = String(val);
+  if (str === 'undefined') return '—';
+  return str;
 }
 
 function generateAuditSummary(r) {
@@ -49,23 +68,24 @@ function generateAuditSummary(r) {
   if (prev && next) {
     const keys = new Set([...Object.keys(prev), ...Object.keys(next)]);
     for (const key of keys) {
-      if (JSON.stringify(prev[key]) !== JSON.stringify(next[key])) {
+      if (!METADATA_FIELDS.has(key) && JSON.stringify(prev[key]) !== JSON.stringify(next[key])) {
         changes.push(key);
       }
     }
     if (changes.length > 0) {
       return `Modificó: ${changes.join(', ')}`;
     }
-    return 'Actualización de registro (sin cambios de valores)';
+    return next.accion_negocio ? `Operación de negocio: ${next.accion_negocio}` : 'Actualización de registro (sin cambios de valores)';
   }
   
   if (next) {
-    const keys = Object.keys(next).filter(k => k !== 'hash_repositorio_externo');
-    return `Creó campos: ${keys.join(', ')}`;
+    const keys = Object.keys(next).filter(k => !METADATA_FIELDS.has(k));
+    return keys.length > 0 ? `Creó campos: ${keys.join(', ')}` : `Operación de negocio: ${next.accion_negocio ?? 'Ejecutada'}`;
   }
   
   if (prev) {
-    return `Eliminó registro: ${Object.keys(prev).join(', ')}`;
+    const keys = Object.keys(prev).filter(k => !METADATA_FIELDS.has(k));
+    return `Eliminó registro: ${keys.join(', ')}`;
   }
   
   return r.ip ? `Operación desde IP: ${r.ip}` : 'Sin datos de cambio';
@@ -81,7 +101,10 @@ function AuditValueChanges({ valorAnterior, valorNuevo }) {
 
   // INSERT
   if (!prev && next) {
-    const nextFields = Object.entries(next).filter(([k]) => k !== 'hash_repositorio_externo');
+    const nextFields = Object.entries(next).filter(([k]) => !METADATA_FIELDS.has(k));
+    if (nextFields.length === 0) {
+      return null;
+    }
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <p style={{ fontSize: '0.78rem', color: 'var(--c-text-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Valores Creados</p>
@@ -89,7 +112,7 @@ function AuditValueChanges({ valorAnterior, valorNuevo }) {
           {nextFields.map(([key, val]) => (
             <div key={key} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid #222' }}>
               <span style={{ color: 'var(--c-gold)' }}>{key}:</span>
-              <span style={{ color: '#4ade80', wordBreak: 'break-all' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+              <span style={{ color: '#4ade80', wordBreak: 'break-all' }}>{formatDisplayValue(val)}</span>
             </div>
           ))}
         </div>
@@ -99,14 +122,15 @@ function AuditValueChanges({ valorAnterior, valorNuevo }) {
 
   // DELETE
   if (prev && !next) {
+    const prevFields = Object.entries(prev).filter(([k]) => !METADATA_FIELDS.has(k));
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
         <p style={{ fontSize: '0.78rem', color: 'var(--c-text-2)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Valores Eliminados</p>
         <div style={{ background: '#111', border: '1px solid var(--c-border)', borderRadius: 8, padding: '0.75rem', fontFamily: 'monospace', fontSize: '0.78rem' }}>
-          {Object.entries(prev).map(([key, val]) => (
+          {prevFields.map(([key, val]) => (
             <div key={key} style={{ display: 'grid', gridTemplateColumns: '150px 1fr', gap: '0.5rem', padding: '0.2rem 0', borderBottom: '1px solid #222' }}>
               <span style={{ color: 'var(--c-gold)' }}>{key}:</span>
-              <span style={{ color: '#f87171', wordBreak: 'break-all' }}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
+              <span style={{ color: '#f87171', wordBreak: 'break-all' }}>{formatDisplayValue(val)}</span>
             </div>
           ))}
         </div>
@@ -115,11 +139,14 @@ function AuditValueChanges({ valorAnterior, valorNuevo }) {
   }
 
   // UPDATE
-  const allKeys = Array.from(new Set([...Object.keys(prev), ...Object.keys(next)]));
-  const changedKeys = allKeys.filter(key => JSON.stringify(prev[key]) !== JSON.stringify(next[key]));
+  const keysToCompare = Object.keys(prev).filter(key => key in next);
+  const changedKeys = keysToCompare.filter(key => 
+    !METADATA_FIELDS.has(key) && 
+    JSON.stringify(prev[key]) !== JSON.stringify(next[key])
+  );
 
   if (changedKeys.length === 0) {
-    return <p style={{ color: 'var(--c-text-3)', fontSize: '0.82rem' }}>La transacción se guardó, pero no hubo diferencias entre los valores anterior y nuevo.</p>;
+    return <p style={{ color: 'var(--c-text-3)', fontSize: '0.82rem', textAlign: 'center', padding: '1rem', background: '#111', borderRadius: 8, border: '1px dashed var(--c-border)' }}>La transacción se guardó, pero no hubo diferencias en los campos de negocio.</p>;
   }
 
   return (
@@ -132,15 +159,68 @@ function AuditValueChanges({ valorAnterior, valorNuevo }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', fontSize: '0.78rem', fontFamily: 'monospace' }}>
               <div style={{ background: 'rgba(248, 113, 113, 0.05)', borderLeft: '3px solid #f87171', padding: '0.35rem 0.5rem', borderRadius: 4 }}>
                 <span style={{ color: 'rgba(248, 113, 113, 0.6)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Anterior</span>
-                <span style={{ color: '#f87171', wordBreak: 'break-all' }}>{prev[key] !== null ? (typeof prev[key] === 'object' ? JSON.stringify(prev[key]) : String(prev[key])) : 'null'}</span>
+                <span style={{ color: '#f87171', wordBreak: 'break-all' }}>{formatDisplayValue(prev[key])}</span>
               </div>
               <div style={{ background: 'rgba(74, 222, 128, 0.05)', borderLeft: '3px solid #4ade80', padding: '0.35rem 0.5rem', borderRadius: 4 }}>
                 <span style={{ color: 'rgba(74, 222, 128, 0.6)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', marginBottom: '0.15rem' }}>Nuevo</span>
-                <span style={{ color: '#4ade80', wordBreak: 'break-all' }}>{next[key] !== null ? (typeof next[key] === 'object' ? JSON.stringify(next[key]) : String(next[key])) : 'null'}</span>
+                <span style={{ color: '#4ade80', wordBreak: 'break-all' }}>{formatDisplayValue(next[key])}</span>
               </div>
             </div>
           </div>
         ))}
+      </div>
+    </div>
+  );
+}
+
+function AuditIntegrityBlock({ valorNuevo }) {
+  const next = formatJsonValue(valorNuevo);
+  if (!next || !next.hash_integrity && !next.hash_integridad) return null;
+
+  const hash = next.hash_integridad ?? next.hash_integrity;
+
+  return (
+    <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px dashed var(--c-border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--c-gold)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+        <span style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--c-gold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          Bloque de Integridad Criptográfica (SHA-256)
+        </span>
+      </div>
+      
+      <div style={{ background: 'rgba(212, 175, 55, 0.02)', border: '1px solid rgba(212, 175, 55, 0.12)', borderRadius: 8, padding: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', fontFamily: 'monospace' }}>
+        {next.accion_negocio && (
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--c-text-3)' }}>Acción de Negocio:</span>
+            <span style={{ color: 'var(--c-text-2)', fontWeight: 600 }}>{next.accion_negocio}</span>
+          </div>
+        )}
+        <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '0.5rem' }}>
+          <span style={{ color: 'var(--c-text-3)' }}>Hash de Integridad:</span>
+          <span style={{ color: '#4ade80', wordBreak: 'break-all' }}>{hash}</span>
+        </div>
+        {next.timestamp_auditoria && (
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '0.5rem' }}>
+            <span style={{ color: 'var(--c-text-3)' }}>Sello de Tiempo:</span>
+            <span style={{ color: 'var(--c-text-2)' }}>{new Date(next.timestamp_auditoria).toLocaleString('es-CO')}</span>
+          </div>
+        )}
+        {next.repositorio_integridad && (
+          <div style={{ display: 'grid', gridTemplateColumns: '160px 1fr', gap: '0.5rem', marginTop: '0.25rem', paddingTop: '0.25rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+            <span style={{ color: 'var(--c-text-3)' }}>Repositorio Seguro:</span>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+              <div><span style={{ color: 'var(--c-text-3)' }}>Cadena: </span><span style={{ color: 'var(--c-gold)' }}>{next.repositorio_integridad.nombre}</span></div>
+              <div><span style={{ color: 'var(--c-text-3)' }}>Modo: </span><span style={{ color: '#38bdf8' }}>{next.repositorio_integridad.modo}</span></div>
+            </div>
+          </div>
+        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#4ade80', fontSize: '0.7rem', marginTop: '0.25rem', background: 'rgba(74, 222, 128, 0.04)', padding: '0.3rem 0.5rem', borderRadius: 4, width: 'fit-content' }}>
+          <span style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', background: '#4ade80' }}></span>
+          Cadena de bloques verificada e inmutable
+        </div>
       </div>
     </div>
   );
@@ -447,6 +527,7 @@ export default function Auditoria() {
           </div>
 
           <AuditValueChanges valorAnterior={selectedLog.valor_anterior} valorNuevo={selectedLog.valor_nuevo} />
+          <AuditIntegrityBlock valorNuevo={selectedLog.valor_nuevo} />
         </Modal>
       )}
     </>
