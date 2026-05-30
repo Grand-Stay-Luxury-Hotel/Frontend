@@ -238,16 +238,25 @@ export const api = {
     previo: async (reservaId, token) => {
       const reserva = await getReservaByIdOrSearch(reservaId, token);
       if (!reserva?.id_reserva) throw new Error('No se encontró la reserva para generar resumen previo.');
+      // Fechas de la reserva ya buscada (siempre strings ISO desde la API de reservas)
+      const fechaEntradaFallback = reserva.fecha_entrada ? String(reserva.fecha_entrada) : null;
+      const fechaSalidaFallback  = reserva.fecha_salida  ? String(reserva.fecha_salida)  : null;
       try {
-        return await request('GET', `/checkout/${reserva.id_reserva}/resumen`, null, token);
+        const data = await request('GET', `/checkout/${reserva.id_reserva}/resumen`, null, token);
+        // Garantizar que las fechas siempre sean strings (MySQL puede devolver objetos Date)
+        return {
+          ...data,
+          fecha_entrada: data.fecha_entrada ? String(data.fecha_entrada) : fechaEntradaFallback,
+          fecha_salida:  data.fecha_salida  ? String(data.fecha_salida)  : fechaSalidaFallback,
+        };
       } catch (err) {
         // Si es un error de negocio (422), lo lanzamos para que la UI lo maneje
         if (err.status === 422) throw err;
         return {
           id_reserva: reserva.id_reserva,
           estado: reserva.estado,
-          fecha_entrada: reserva.fecha_entrada,
-          fecha_salida: reserva.fecha_salida,
+          fecha_entrada: fechaEntradaFallback,
+          fecha_salida:  fechaSalidaFallback,
           total_facturado: null,
           saldo_pendiente: null,
           consumos: [],

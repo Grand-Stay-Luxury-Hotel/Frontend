@@ -123,7 +123,7 @@ export default function Reservas() {
         fecha_entrada:  form.fecha_entrada,
         fecha_salida:   form.fecha_salida,
         monto_anticipo: Number(form.monto_anticipo),
-        token_pago:     form.token_pago,
+        token_pago:     form.token_pago.trim() || `tok_test_${Math.random().toString(36).substring(2, 9)}`,
         observaciones:  form.observaciones || undefined,
       };
       const data = await api.reservas.crear(payload, auth.token);
