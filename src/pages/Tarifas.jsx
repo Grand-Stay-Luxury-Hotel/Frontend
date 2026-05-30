@@ -319,15 +319,27 @@ export default function Tarifas() {
                       {t.fecha_inicio?.slice(0, 10)} → {t.fecha_fin?.slice(0, 10)}
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '0.2rem 0.6rem',
-                        borderRadius: 'var(--r-sm)', fontSize: '0.73rem', fontWeight: 600,
-                        background: t.activa ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
-                        color: t.activa ? '#4ade80' : '#f87171',
-                        border: `1px solid ${t.activa ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                      }}>
-                        {t.activa ? 'Activa' : 'Inactiva'}
-                      </span>
+                      <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '0.2rem 0.6rem',
+                          borderRadius: 'var(--r-sm)', fontSize: '0.73rem', fontWeight: 600,
+                          background: t.activa ? 'rgba(34,197,94,0.1)' : 'rgba(239,68,68,0.1)',
+                          color: t.activa ? '#4ade80' : '#f87171',
+                          border: `1px solid ${t.activa ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                        }}>
+                          {t.activa ? 'Activa' : 'Inactiva'}
+                        </span>
+                        {t.activa && new Date(t.fecha_fin) < new Date() && (
+                          <span style={{
+                            display: 'inline-block', padding: '0.2rem 0.6rem',
+                            borderRadius: 'var(--r-sm)', fontSize: '0.73rem', fontWeight: 600,
+                            background: 'rgba(234,179,8,0.1)', color: '#fbbf24',
+                            border: '1px solid rgba(234,179,8,0.3)',
+                          }}>
+                            Expirada
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td style={{ padding: '0.75rem 1rem' }}>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>

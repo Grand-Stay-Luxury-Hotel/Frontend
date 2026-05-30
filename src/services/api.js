@@ -240,7 +240,9 @@ export const api = {
       if (!reserva?.id_reserva) throw new Error('No se encontró la reserva para generar resumen previo.');
       try {
         return await request('GET', `/checkout/${reserva.id_reserva}/resumen`, null, token);
-      } catch {
+      } catch (err) {
+        // Si es un error de negocio (422), lo lanzamos para que la UI lo maneje
+        if (err.status === 422) throw err;
         return {
           id_reserva: reserva.id_reserva,
           estado: reserva.estado,
