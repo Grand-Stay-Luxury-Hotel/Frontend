@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
@@ -22,7 +22,7 @@ export default function Consumos() {
   const [loadingHistorial, setLoadingHistorial] = useState(false);
 
   useEffect(() => {
-    api.servicios.listar()
+    api.servicios.listar(auth.token)
       .then((res) => setServicios(res.data ?? res))
       .catch(() => {});
   }, []);

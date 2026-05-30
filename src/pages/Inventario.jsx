@@ -1,4 +1,4 @@
-﻿import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
@@ -11,6 +11,25 @@ const TAREAS = [
   { value: 'limpieza_profunda', label: 'Limpieza profunda' },
   { value: 'mantenimiento',     label: 'Mantenimiento'     },
   { value: 'preparacion_hab',   label: 'Preparación hab.'  },
+];
+
+const CATEGORIAS_INSUMO = [
+  { value: 'quimico',      label: 'Químico'      },
+  { value: 'textil',       label: 'Textil'       },
+  { value: 'papel',        label: 'Papel'        },
+  { value: 'herramienta',  label: 'Herramienta'  },
+  { value: 'electronico',  label: 'Electrónico'  },
+  { value: 'otro',         label: 'Otro'         },
+];
+
+const UNIDADES_MEDIDA = [
+  { value: 'unidad',  label: 'Unidad'  },
+  { value: 'litro',   label: 'Litro'   },
+  { value: 'kg',      label: 'Kg'      },
+  { value: 'gramo',   label: 'Gramo'   },
+  { value: 'metro',   label: 'Metro'   },
+  { value: 'rollo',   label: 'Rollo'   },
+  { value: 'paquete', label: 'Paquete' },
 ];
 
 export default function Inventario() {
@@ -155,7 +174,7 @@ export default function Inventario() {
     }
   };
 
-  /* â”€â”€ UMBRAL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+  /* ── UMBRAL ──────────────────────────────────────────────────────── */
   const [umbralForm, setUmbralForm]   = useState({ id: '', umbral: '' });
   const [umbralLoading, setUmbralLoading] = useState(false);
   const [umbralResult, setUmbralResult]   = useState(null);
@@ -182,15 +201,79 @@ export default function Inventario() {
 
   const insumosSeleccionado = insumos.find((i) => String(i.id_insumo ?? i.id) === String(umbralForm.id));
 
+  /* ── NUEVO INSUMO ────────────────────────────────────────────────── */
+  const NUEVO_INSUMO_INICIAL = { nombre: '', categoria: 'quimico', unidad_medida: 'unidad', stock_actual: '', stock_minimo: '' };
+  const [nuevoInsumoForm, setNuevoInsumoForm] = useState(NUEVO_INSUMO_INICIAL);
+  const [nuevoInsumoLoading, setNuevoInsumoLoading] = useState(false);
+  const [nuevoInsumoResult, setNuevoInsumoResult]   = useState(null);
+
+  const setNI = (f) => (e) => setNuevoInsumoForm((p) => ({ ...p, [f]: e.target.value }));
+
+  const handleNuevoInsumo = async (e) => {
+    e.preventDefault();
+    setNuevoInsumoLoading(true);
+    setNuevoInsumoResult(null);
+    try {
+      const payload = {
+        nombre:        nuevoInsumoForm.nombre.trim(),
+        categoria:     nuevoInsumoForm.categoria,
+        unidad_medida: nuevoInsumoForm.unidad_medida,
+        stock_actual:  Number(nuevoInsumoForm.stock_actual),
+        stock_minimo:  Number(nuevoInsumoForm.stock_minimo),
+      };
+      const data = await api.inventario.crearInsumo(payload, auth.token);
+      setNuevoInsumoResult({ type: 'success', data });
+      addToast(`Insumo "${payload.nombre}" creado correctamente.`, 'success');
+      setNuevoInsumoForm(NUEVO_INSUMO_INICIAL);
+      loadInsumos();
+    } catch (err) {
+      setNuevoInsumoResult({ type: 'error', msg: err.message });
+      addToast(err.message, 'error');
+    } finally {
+      setNuevoInsumoLoading(false);
+    }
+  };
+
+  /* ── AÑADIR STOCK ────────────────────────────────────────────────── */
+  const [stockForm, setStockForm] = useState({ id: '', cantidad: '' });
+  const [stockAddLoading, setStockAddLoading] = useState(false);
+  const [stockAddResult, setStockAddResult]   = useState(null);
+
+  const setSK = (f) => (e) => setStockForm((p) => ({ ...p, [f]: e.target.value }));
+
+  const handleAgregarStock = async (e) => {
+    e.preventDefault();
+    setStockAddLoading(true);
+    setStockAddResult(null);
+    try {
+      const data = await api.inventario.agregarStock(stockForm.id, Number(stockForm.cantidad), auth.token);
+      setStockAddResult({ type: 'success', data });
+      addToast('Stock actualizado correctamente.', 'success');
+      setStockForm({ id: '', cantidad: '' });
+      loadInsumos();
+    } catch (err) {
+      setStockAddResult({ type: 'error', msg: err.message });
+      addToast(err.message, 'error');
+    } finally {
+      setStockAddLoading(false);
+    }
+  };
+
+  const insumoStockSeleccionado = insumos.find((i) => String(i.id_insumo ?? i.id) === String(stockForm.id));
+
   const TABS = [
     ...(isAdmin ? [
-      { id: 'insumos',     label: 'Insumos' },
-      { id: 'stockCritico', label: 'Stock Crítico' },
-      { id: 'historial',   label: 'Historial' },
-      { id: 'alertas',     label: 'Alertas' },
+      { id: 'insumos',      label: 'Insumos'        },
+      { id: 'stockCritico', label: 'Stock Crítico'   },
+      { id: 'historial',    label: 'Historial'       },
+      { id: 'alertas',      label: 'Alertas'         },
     ] : []),
     { id: 'consumo', label: 'Registrar Consumo' },
-    ...(isAdmin ? [{ id: 'umbral', label: 'Actualizar Umbral' }] : []),
+    ...(isAdmin ? [
+      { id: 'umbral',       label: 'Actualizar Umbral' },
+      { id: 'nuevoInsumo',  label: '+ Nuevo Insumo'    },
+      { id: 'añadirStock',  label: '+ Añadir Stock'    },
+    ] : []),
   ];
 
   const fmt = (n) => Number(n || 0).toLocaleString('es-CO');
@@ -229,7 +312,7 @@ export default function Inventario() {
         ))}
       </div>
 
-      {/* â”€â”€ INSUMOS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── INSUMOS TAB ────────────────────────────────────────── */}
       {tab === 'insumos' && isAdmin && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
@@ -284,7 +367,7 @@ export default function Inventario() {
         </>
       )}
 
-      {/* â”€â”€ STOCK CRÍTICO TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── STOCK CRÍTICO TAB ────────────────────────────────────────── */}
       {tab === 'stockCritico' && isAdmin && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
@@ -327,12 +410,12 @@ export default function Inventario() {
         </>
       )}
 
-      {/* â”€â”€ HISTORIAL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── HISTORIAL TAB ────────────────────────────────────────── */}
       {tab === 'historial' && isAdmin && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
             <button className="btn btn-outline btn-sm" onClick={loadHistorial} disabled={histLoading}>
-              {histLoading ? 'Cargando…' : 'â†» Actualizar'}
+              {histLoading ? 'Cargando…' : '» Actualizar'}
             </button>
           </div>
           {histLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
@@ -370,12 +453,12 @@ export default function Inventario() {
         </>
       )}
 
-      {/* â”€â”€ ALERTS TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── ALERTS TAB ────────────────────────────────────────── */}
       {tab === 'alertas' && isAdmin && (
         <>
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
             <button className="btn btn-outline btn-sm" onClick={loadAlerts} disabled={alertsLoading}>
-              {alertsLoading ? 'Cargando…' : 'â†» Actualizar'}
+              {alertsLoading ? 'Cargando…' : '» Actualizar'}
             </button>
           </div>
           {alertsLoading && <div className="spinner-wrap"><div className="spinner" /></div>}
@@ -413,7 +496,7 @@ export default function Inventario() {
         </>
       )}
 
-      {/* â”€â”€ CONSUMO TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── CONSUMO TAB ────────────────────────────────────────── */}
       {tab === 'consumo' && (
         <div style={{ maxWidth: 520 }}>
           <div className="card">
@@ -473,7 +556,7 @@ export default function Inventario() {
         </div>
       )}
 
-      {/* â”€â”€ UMBRAL TAB â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+      {/* ── UMBRAL TAB ─────────────────────────────────────────────────── */}
       {tab === 'umbral' && isAdmin && (
         <div style={{ maxWidth: 400 }}>
           <div className="card">
@@ -497,7 +580,7 @@ export default function Inventario() {
               </div>
               <div className="form-group">
                 <label className="form-label">
-                  Nuevo umbral mínimo ({insumosSeleccionado?.unidad ?? 'unidades'})
+                  Nuevo umbral mínimo ({insumosSeleccionado?.unidad_medida ?? 'unidades'})
                 </label>
                 <input type="number" className="form-input" placeholder="Cantidad mínima de stock" min="1" value={umbralForm.umbral} onChange={setU('umbral')} required />
               </div>
@@ -507,6 +590,172 @@ export default function Inventario() {
 
               <button type="submit" className="btn btn-gold btn-full" disabled={umbralLoading}>
                 {umbralLoading ? 'Actualizando…' : 'Actualizar Umbral'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── NUEVO INSUMO TAB ───────────────────────────────────────────────── */}
+      {tab === 'nuevoInsumo' && isAdmin && (
+        <div style={{ maxWidth: 520 }}>
+          <div className="card">
+            <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Registrar Nuevo Insumo</p>
+            <span className="gold-line" />
+            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 0.25rem' }}>
+              Agrega un insumo nuevo al catálogo de inventario.
+              Requiere el endpoint{' '}
+              <code style={{ padding: '0.1rem 0.4rem', background: 'var(--c-surface-2)', borderRadius: 4, fontSize: '0.78rem' }}>
+                POST /inventario/insumos
+              </code>{' '}
+              en el backend.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0 1.25rem', padding: '0.6rem 0.9rem', background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.25)', borderRadius: 8 }}>
+              <span style={{ fontSize: '1rem' }}>⚠️</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
+                Endpoint pendiente de implementación. El formulario está listo para cuando esté disponible.
+              </span>
+            </div>
+            <form onSubmit={handleNuevoInsumo} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group">
+                <label className="form-label">Nombre del insumo *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="Ej. Desinfectante multiusos"
+                  value={nuevoInsumoForm.nombre}
+                  onChange={setNI('nombre')}
+                  required
+                />
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Categoría *</label>
+                  <select className="form-select" value={nuevoInsumoForm.categoria} onChange={setNI('categoria')} required>
+                    {CATEGORIAS_INSUMO.map((c) => (
+                      <option key={c.value} value={c.value}>{c.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Unidad de medida *</label>
+                  <select className="form-select" value={nuevoInsumoForm.unidad_medida} onChange={setNI('unidad_medida')} required>
+                    {UNIDADES_MEDIDA.map((u) => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="form-label">Stock inicial *</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Cantidad en bodega"
+                    min="0"
+                    value={nuevoInsumoForm.stock_actual}
+                    onChange={setNI('stock_actual')}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Umbral mínimo *</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    placeholder="Mínimo antes de alerta"
+                    min="1"
+                    value={nuevoInsumoForm.stock_minimo}
+                    onChange={setNI('stock_minimo')}
+                    required
+                  />
+                </div>
+              </div>
+
+              {nuevoInsumoResult?.type === 'success' && (
+                <div className="alert alert-success">✓ Insumo creado correctamente. Ya aparece en la lista de insumos.</div>
+              )}
+              {nuevoInsumoResult?.type === 'error' && (
+                <div className="alert alert-error">{nuevoInsumoResult.msg}</div>
+              )}
+
+              <button type="submit" className="btn btn-gold btn-full" disabled={nuevoInsumoLoading}>
+                {nuevoInsumoLoading ? 'Creando insumo…' : 'Crear Insumo'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── AÑADIR STOCK TAB ───────────────────────────────────────────────── */}
+      {tab === 'añadirStock' && isAdmin && (
+        <div style={{ maxWidth: 420 }}>
+          <div className="card">
+            <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Añadir Stock a Insumo</p>
+            <span className="gold-line" />
+            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 0.25rem' }}>
+              Aumenta el stock de un insumo existente (reposición de bodega). Requiere el endpoint{' '}
+              <code style={{ padding: '0.1rem 0.4rem', background: 'var(--c-surface-2)', borderRadius: 4, fontSize: '0.78rem' }}>
+                PATCH /inventario/:id/stock
+              </code>{' '}
+              en el backend.
+            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0 1.25rem', padding: '0.6rem 0.9rem', background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.25)', borderRadius: 8 }}>
+              <span style={{ fontSize: '1rem' }}>⚠️</span>
+              <span style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
+                Endpoint pendiente de implementación. El formulario está listo para cuando esté disponible.
+              </span>
+            </div>
+            <form onSubmit={handleAgregarStock} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+              <div className="form-group">
+                <label className="form-label">Insumo *</label>
+                <select className="form-select" value={stockForm.id} onChange={setSK('id')} required>
+                  <option value="">— Seleccione un insumo —</option>
+                  {insumos.map((ins) => {
+                    const id = ins.id_insumo ?? ins.id;
+                    const stock = ins.stock_actual ?? 0;
+                    const umbral = ins.stock_minimo ?? 0;
+                    return (
+                      <option key={id} value={id}>
+                        {ins.nombre} · Stock: {fmt(stock)} {ins.unidad_medida}{stock <= umbral ? ' ⚠️' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {insumoStockSeleccionado && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--c-text-2)', padding: '0.6rem 0.9rem', background: 'var(--c-surface-2)', borderRadius: 8, display: 'flex', gap: '1.5rem' }}>
+                  <span>Stock actual: <strong style={{ color: 'var(--c-text)' }}>{fmt(insumoStockSeleccionado.stock_actual ?? 0)} {insumoStockSeleccionado.unidad_medida}</strong></span>
+                  <span>Umbral mínimo: <strong style={{ color: 'var(--c-text)' }}>{fmt(insumoStockSeleccionado.stock_minimo ?? 0)}</strong></span>
+                </div>
+              )}
+
+              <div className="form-group">
+                <label className="form-label">
+                  Cantidad a añadir{insumoStockSeleccionado ? ` (${insumoStockSeleccionado.unidad_medida})` : ''} *
+                </label>
+                <input
+                  type="number"
+                  className="form-input"
+                  placeholder="Unidades a ingresar a bodega"
+                  min="1"
+                  value={stockForm.cantidad}
+                  onChange={setSK('cantidad')}
+                  required
+                />
+              </div>
+
+              {stockAddResult?.type === 'success' && (
+                <div className="alert alert-success">✓ Stock añadido correctamente.</div>
+              )}
+              {stockAddResult?.type === 'error' && (
+                <div className="alert alert-error">{stockAddResult.msg}</div>
+              )}
+
+              <button type="submit" className="btn btn-gold btn-full" disabled={stockAddLoading}>
+                {stockAddLoading ? 'Añadiendo stock…' : 'Añadir Stock'}
               </button>
             </form>
           </div>

@@ -160,10 +160,10 @@ export const api = {
 
   // ── Tarifas ────────────────────────────────────────────────────────────────
   tarifas: {
-    listar:     (_token)        => unsupportedEndpoint('El backend actual no expone endpoints /tarifas.'),
-    crear:      (_body, _token) => unsupportedEndpoint('El backend actual no expone endpoints /tarifas.'),
-    actualizar: (_id, _body, _token) => unsupportedEndpoint('El backend actual no expone endpoints /tarifas.'),
-    eliminar:   (_id, _token)   => unsupportedEndpoint('El backend actual no expone endpoints /tarifas.'),
+    listar:     (token)              => request('GET',    '/tarifas',      null,  token),
+    crear:      (body, token)        => request('POST',   '/tarifas',      body,  token),
+    actualizar: (id, body, token)    => request('PUT',    `/tarifas/${id}`, body, token),
+    eliminar:   (id, token)          => request('DELETE', `/tarifas/${id}`, null, token),
   },
 
   // ── Reservas ───────────────────────────────────────────────────────────────
@@ -207,16 +207,21 @@ export const api = {
   checkout: {
     previo: async (reservaId, token) => {
       const reserva = await getReservaByIdOrSearch(reservaId, token);
-      if (!reserva) throw new Error('No se encontró la reserva para generar resumen previo.');
-      return {
-        id_reserva: reserva.id_reserva,
-        estado: reserva.estado,
-        fecha_entrada: reserva.fecha_entrada,
-        fecha_salida: reserva.fecha_salida,
-        total_facturado: null,
-        saldo_pendiente: null,
-        consumos: [],
-      };
+      if (!reserva?.id_reserva) throw new Error('No se encontró la reserva para generar resumen previo.');
+      try {
+        return await request('GET', `/checkout/${reserva.id_reserva}/resumen`, null, token);
+      } catch {
+        // Fallback: construir resumen básico desde los datos de la reserva
+        return {
+          id_reserva: reserva.id_reserva,
+          estado: reserva.estado,
+          fecha_entrada: reserva.fecha_entrada,
+          fecha_salida: reserva.fecha_salida,
+          total_facturado: null,
+          saldo_pendiente: null,
+          consumos: [],
+        };
+      }
     },
     registrar: async (reservaId, token) => {
       const reserva = await getReservaByIdOrSearch(reservaId, token);
@@ -229,7 +234,7 @@ export const api = {
 
   // ── Facturas ───────────────────────────────────────────────────────────────
   facturas: {
-    obtener: (_idReserva, _token) => unsupportedEndpoint('El backend actual no expone endpoint de consulta de facturas por API.'),
+    obtener: (idReserva, token) => request('GET', `/facturas/reserva/${idReserva}`, null, token),
   },
 
   // ── Consumos ───────────────────────────────────────────────────────────────
@@ -262,15 +267,27 @@ export const api = {
     },
   },
 
-  // ── Servicios adicionales (público) ────────────────────────────────────────
+  // ── Servicios adicionales (requiere token) ─────────────────────────────────
   servicios: {
-    listar: async () => SERVICIOS_COMPAT,
+    listar: async (token) => {
+      try {
+        return await request('GET', '/servicios', null, token);
+      } catch {
+        return { data: SERVICIOS_COMPAT, total: SERVICIOS_COMPAT.length };
+      }
+    },
   },
 
   // ── Inventario ─────────────────────────────────────────────────────────────
   inventario: {
-    listarInsumos:    async (_token) => INSUMOS_COMPAT,
-    stockCritico:     async (token) => {
+    listarInsumos: async (token) => {
+      try {
+        return await request('GET', '/inventario/insumos', null, token);
+      } catch {
+        return { data: INSUMOS_COMPAT, total: INSUMOS_COMPAT.length };
+      }
+    },
+    stockCritico: async (token) => {
       const res = await request('GET', '/inventario/alertas', null, token);
       const data = normalizeData(res);
       return data.map((a) => ({
@@ -281,16 +298,25 @@ export const api = {
         criticidad: a.criticidad,
       }));
     },
-    historial:        async (_params, _token) => ({ data: [] }),
-    alertas:          async (token) => {
+    historial: async (params, token) => {
+      try {
+        const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
+        return await request('GET', `/inventario/historial${qs}`, null, token);
+      } catch {
+        return { data: [] };
+      }
+    },
+    alertas: async (token) => {
       try {
         return await request('GET', '/inventario/alertas', null, token);
       } catch {
         return { data: [], total: 0 };
       }
     },
-    registrarConsumo: (body, token)            => request('POST',  '/inventario/consumo',       body,       token),
-    umbral:           (id, umbral, token)      => request('PATCH', `/inventario/${id}/umbral`,  { umbral }, token),
+    registrarConsumo: (body, token)           => request('POST',  '/inventario/consumo',          body,          token),
+    umbral:           (id, umbral, token)     => request('PATCH', `/inventario/${id}/umbral`,     { umbral },    token),
+    crearInsumo:      (body, token)           => request('POST',  '/inventario/insumos',           body,          token),
+    agregarStock:     (id, cantidad, token)   => request('PATCH', `/inventario/${id}/stock`,       { cantidad },  token),
   },
 
   // ── Reportes ───────────────────────────────────────────────────────────────
@@ -443,6 +469,9 @@ export const api = {
 
   // ── Auditoría (Administrador) ──────────────────────────────────────────────
   auditoria: {
-    listar: async (_params, _token) => ({ data: [], total: 0 }),
+    listar: async (params, token) => {
+      const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
+      return request('GET', `/auditoria${qs}`, null, token);
+    },
   },
 };

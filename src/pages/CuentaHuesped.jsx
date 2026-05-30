@@ -27,7 +27,7 @@ export default function CuentaHuesped() {
       .finally(() => setLoading(false));
   }, [auth.token, addToast]);
 
-  const fmt = (n) => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 });
+  const fmt = (n) => Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
   const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CO') : '—';
 
   const TABS = [
