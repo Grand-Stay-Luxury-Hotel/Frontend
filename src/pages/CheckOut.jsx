@@ -57,7 +57,11 @@ export default function CheckOut() {
       const data = await api.checkout.previo(reservaId.trim(), auth.token);
       setPreview(data.data ?? data);
     } catch (err) {
-      addToast(err.message, 'error');
+      if (err.status === 422) {
+        addToast(`${err.message}. Verifique que exista una tarifa activa para las fechas de la reserva en el módulo de Tarifas.`, 'error');
+      } else {
+        addToast(err.message, 'error');
+      }
     } finally {
       setLoadingPreview(false);
     }

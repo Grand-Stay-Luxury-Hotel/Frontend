@@ -3,7 +3,26 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
 
-const ACCIONES = ['', 'INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'ACCESS_DENIED'];
+const ACCIONES = [
+  { value: '', label: 'Todas' },
+  { value: 'INSERT', label: 'Insertar' },
+  { value: 'UPDATE', label: 'Actualizar' },
+  { value: 'DELETE', label: 'Eliminar' },
+  { value: 'LOGIN', label: 'Inicio de sesión' },
+  { value: 'LOGOUT', label: 'Cierre de sesión' },
+  { value: 'READ', label: 'Lectura' },
+  { value: 'ACCESS_DENIED', label: 'Acceso denegado' },
+];
+
+const ACCION_LABEL = {
+  INSERT: 'Insertar',
+  UPDATE: 'Actualizar',
+  DELETE: 'Eliminar',
+  LOGIN: 'Inicio de sesión',
+  LOGOUT: 'Cierre de sesión',
+  READ: 'Lectura',
+  ACCESS_DENIED: 'Acceso denegado',
+};
 
 export default function Auditoria() {
   const { auth } = useAuth();
@@ -67,6 +86,7 @@ export default function Auditoria() {
     DELETE:        'badge-error',
     LOGIN:         'badge-info',
     LOGOUT:        'badge-info',
+    READ:          'badge-info',
     ACCESS_DENIED: 'badge-error',
   };
 
@@ -85,7 +105,7 @@ export default function Auditoria() {
               <label className="form-label">Acción</label>
               <select className="form-select" value={filtros.accion} onChange={setF('accion')}>
                 {ACCIONES.map((a) => (
-                  <option key={a} value={a}>{a || '— Todas —'}</option>
+                  <option key={a.value} value={a.value}>{a.label}</option>
                 ))}
               </select>
             </div>
@@ -198,7 +218,7 @@ export default function Auditoria() {
                     </td>
                     <td>
                       <span className={`badge ${ACCION_CLASS[r.accion] ?? 'badge-info'}`}>
-                        {r.accion ?? '—'}
+                        {ACCION_LABEL[r.accion] ?? r.accion ?? '—'}
                       </span>
                     </td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', fontFamily: 'monospace' }}>
