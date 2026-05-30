@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -16,31 +16,37 @@ export default function CheckOut() {
 
   const printCheckoutFactura = (data) => {
     const win = window.open('', '_blank', 'width=620,height=520');
-    const total = typeof data.total_facturado === 'number'
-      ? data.total_facturado.toLocaleString('es-CO', { minimumFractionDigits: 2 })
-      : data.total_facturado ?? 'N/D';
-    const saldo = typeof data.saldo_pendiente === 'number'
-      ? data.saldo_pendiente.toLocaleString('es-CO', { minimumFractionDigits: 2 })
-      : data.saldo_pendiente ?? 'N/D';
+    
+    const facturaNum = data.factura_electronica?.numero_factura ?? 'N/D';
+    const subtotal = data.resumen_factura?.subtotal ?? 0;
+    const impuestos = data.resumen_factura?.impuestos ?? 0;
+    const total = data.resumen_factura?.total ?? 0;
+    const anticipo = data.resumen_factura?.anticipo_pagado ?? 0;
+    const saldo = data.resumen_factura?.saldo_cobrado ?? 0;
+    const resId = data.factura_electronica?.id_reserva ?? '—';
+
     win.document.write(`<!DOCTYPE html><html><head><title>Factura Check-Out</title>
     <style>
-      body{font-family:Georgia,serif;padding:2cm;color:#111;}
-      h1{font-size:1.5rem;margin:0 0 0.25rem;}
-      .sub{color:#666;font-size:0.95rem;margin-bottom:1.5rem;}
+      body{font-family:Georgia,serif;padding:2cm;color:#111;line-height:1.5;}
+      h1{font-size:1.6rem;margin:0 0 0.25rem;color:#c9a96e;font-family:'Times New Roman',Times,serif;text-transform:uppercase;letter-spacing:0.05em;}
+      .sub{color:#666;font-size:0.9rem;margin-bottom:1.5rem;text-transform:uppercase;letter-spacing:0.1em;}
       table{width:100%;border-collapse:collapse;margin-top:1rem;}
-      td{padding:0.45rem 0;border-bottom:1px solid #eee;font-size:0.9rem;}
-      td:first-child{color:#555;width:55%;}
-      td:last-child{font-weight:600;text-align:right;}
-      .total-row td{font-size:1.05rem;font-weight:700;border-top:2px solid #111;border-bottom:none;padding-top:0.75rem;}
-      .footer{margin-top:2rem;font-size:0.78rem;color:#999;border-top:1px solid #ddd;padding-top:0.75rem;}
+      td{padding:0.6rem 0;border-bottom:1px solid #eee;font-size:0.9rem;}
+      td:first-child{color:#555;width:60%;}
+      td:last-child{font-weight:600;text-align:right;font-family:monospace;font-size:0.95rem;}
+      .total-row td{font-size:1.05rem;font-weight:700;border-top:2px solid #111;border-bottom:none;padding-top:0.75rem;color:#111;}
+      .footer{margin-top:2.5rem;font-size:0.78rem;color:#999;border-top:1px solid #ddd;padding-top:0.75rem;text-align:center;}
     </style></head><body>
     <h1>Grand Stay Hotels</h1>
     <div class="sub">Factura de Check-Out</div>
     <table>
-      <tr><td>N° de Factura</td><td>${data.codigo_factura ?? 'N/D'}</td></tr>
-      <tr><td>Reserva N°</td><td>${reservaId}</td></tr>
-      <tr class="total-row"><td>Total facturado (COP)</td><td>$${total}</td></tr>
-      <tr><td>Saldo pendiente (COP)</td><td>$${saldo}</td></tr>
+      <tr><td>N° de Factura</td><td>${facturaNum}</td></tr>
+      <tr><td>Reserva N°</td><td>${resId}</td></tr>
+      <tr><td>Subtotal</td><td>$${subtotal.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td></tr>
+      <tr><td>Impuestos (19% IVA)</td><td>$${impuestos.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td></tr>
+      <tr><td>Anticipo pagado</td><td>$${anticipo.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td></tr>
+      <tr class="total-row"><td>Total facturado (COP)</td><td>$${total.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td></tr>
+      <tr><td>Saldo liquidado (Cobrado)</td><td>$${saldo.toLocaleString('es-CO', { minimumFractionDigits: 2 })}</td></tr>
     </table>
     <div class="footer">Gracias por hospedarse en Grand Stay Hotels. ¡Esperamos volver a recibirle pronto!</div>
     <script>window.focus();window.print();window.close();</script>
@@ -88,6 +94,23 @@ export default function CheckOut() {
 
   const fmt = (n) => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 });
 
+  const parseDateSafe = (d) => {
+    if (!d) return null;
+    // Normalize to YYYY-MM-DD to avoid UTC offset issues with MySQL datetime strings
+    const str = typeof d === 'string' ? d : new Date(d).toISOString();
+    const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!match) return null;
+    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
+    return isNaN(date.getTime()) ? null : date;
+  };
+
+  const dateEntrada = preview ? parseDateSafe(preview.fecha_entrada) : null;
+  const dateSalida = preview ? parseDateSafe(preview.fecha_salida) : null;
+  const nights = (dateEntrada && dateSalida) ? Math.ceil((dateSalida - dateEntrada) / (1000 * 60 * 60 * 24)) : 0;
+  const nightsTotal = preview?.resumen_factura?.tarifa_base;
+  const ratePerNight = nights > 0 && nightsTotal !== undefined ? (nightsTotal / nights) : undefined;
+  const advancePaid = preview?.resumen_factura?.anticipo_pagado;
+
   return (
     <>
       <div className="page-header">
@@ -96,7 +119,7 @@ export default function CheckOut() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: preview ? '1fr 1fr' : '1fr', gap: '1.5rem', maxWidth: preview ? 900 : 540 }}>
-        {/* â”€â”€ Formulario â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Formulario ──────────────────────────── */}
         <div className="card">
           <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Procesar Salida</p>
           <span className="gold-line" />
@@ -130,18 +153,21 @@ export default function CheckOut() {
 
             {result?.type === 'success' && (
               <div className="alert alert-success">
-                <strong>Check-out completado.</strong>
-                {result.data.total_facturado !== undefined && (
+                <strong>Check-out completado con éxito.</strong>
+                {result.data.resumen_factura?.total !== undefined && (
                   <div style={{ marginTop: '0.5rem' }}>
-                    Total facturado: <strong>${fmt(result.data.total_facturado)} COP</strong>
-                    {result.data.saldo_pendiente !== undefined && (
-                      <> · Saldo pendiente: <strong>${fmt(result.data.saldo_pendiente)} COP</strong></>
+                    Total facturado: <strong>${fmt(result.data.resumen_factura.total)} COP</strong>
+                    {result.data.resumen_factura.saldo_cobrado !== undefined && (
+                      <> · Saldo cobrado: <strong>${fmt(result.data.resumen_factura.saldo_cobrado)} COP</strong></>
+                    )}
+                    {result.data.resumen_factura.anticipo_pagado !== undefined && (
+                      <> · Anticipo deducido: <strong>${fmt(result.data.resumen_factura.anticipo_pagado)} COP</strong></>
                     )}
                   </div>
                 )}
-                {result.data.codigo_factura && (
+                {result.data.factura_electronica?.numero_factura && (
                   <div style={{ marginTop: '0.35rem', fontSize: '0.8rem' }}>
-                    Factura: <strong>{result.data.codigo_factura}</strong>
+                    N° Factura: <strong>{result.data.factura_electronica.numero_factura}</strong>
                   </div>
                 )}
               </div>
@@ -181,18 +207,18 @@ export default function CheckOut() {
           </div>
         </div>
 
-        {/* â”€â”€ Preview de liquidación â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
+        {/* ── Preview de liquidación ───────────────── */}
         {preview && (
           <div className="card">
             <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Resumen de Liquidación</p>
             <span className="gold-line" />
             <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {[
-                ['Noches', preview.noches ?? '—'],
-                ['Tarifa por noche', preview.tarifa_noche ? `$${fmt(preview.tarifa_noche)}` : '—'],
-                ['Total noches', preview.total_noches ? `$${fmt(preview.total_noches)}` : '—'],
-                ['Consumos adicionales', preview.total_consumos ? `$${fmt(preview.total_consumos)}` : '$0'],
-                ['Anticipo pagado', preview.anticipo_pagado ? `$${fmt(preview.anticipo_pagado)}` : '—'],
+                ['Noches', (nights > 0) ? nights : (dateEntrada && dateSalida ? nights : '—')],
+                ['Tarifa por noche', ratePerNight !== undefined ? `$${fmt(ratePerNight)}` : '—'],
+                ['Total noches', nightsTotal !== undefined ? `$${fmt(nightsTotal)}` : '—'],
+                ['Consumos adicionales', preview.total_consumos !== undefined ? `$${fmt(preview.total_consumos)}` : '$0,00'],
+                ['Anticipo pagado', advancePaid != null ? `$${fmt(advancePaid)}` : (preview?.resumen_factura ? '$0,00' : '—')],
               ].map(([label, value]) => (
                 <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.4rem 0', borderBottom: '1px solid var(--c-border)', fontSize: '0.85rem' }}>
                   <span style={{ color: 'var(--c-text-2)' }}>{label}</span>
@@ -201,7 +227,15 @@ export default function CheckOut() {
               ))}
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem 0 0.4rem', fontSize: '1rem', fontWeight: 700 }}>
                 <span style={{ color: 'var(--c-text)' }}>Total a cobrar</span>
-                <span style={{ color: 'var(--c-gold)' }}>${fmt(preview.saldo_pendiente ?? preview.total_facturado)}</span>
+                <span style={{ color: 'var(--c-gold)' }}>
+                  {(() => {
+                    const saldo = preview?.resumen_factura?.saldo_cobrado ?? preview?.saldo_pendiente;
+                    const totalFact = preview?.resumen_factura?.total ?? preview?.total_facturado;
+                    if (saldo !== undefined && saldo !== null) return `$${fmt(saldo)}`;
+                    if (totalFact !== undefined && totalFact !== null) return `$${fmt(totalFact)}`;
+                    return '—';
+                  })()}
+                </span>
               </div>
             </div>
             {preview.consumos && preview.consumos.length > 0 && (
@@ -211,8 +245,8 @@ export default function CheckOut() {
                 </p>
                 {preview.consumos.map((c, i) => (
                   <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', padding: '0.3rem 0', borderBottom: '1px solid var(--c-border)' }}>
-                    <span style={{ color: 'var(--c-text-2)' }}>{c.nombre ?? c.descripcion}</span>
-                    <span style={{ color: 'var(--c-text)' }}>${fmt(c.precio_total ?? c.subtotal)}</span>
+                    <span style={{ color: 'var(--c-text-2)' }}>{c.servicio_nombre ?? c.nombre ?? c.descripcion ?? c.notas ?? '—'}</span>
+                    <span style={{ color: 'var(--c-text)' }}>${fmt(c.subtotal ?? c.precio_total ?? (Number(c.cantidad ?? 1) * Number(c.precio_unitario ?? 0)))}</span>
                   </div>
                 ))}
               </div>
