@@ -63,15 +63,48 @@ export default function Inventario() {
   const loadStockCritico = useCallback(async () => {
     setStockLoading(true);
     try {
-      const res = await api.inventario.stockCritico(auth.token);
-      setStockCritico(res.data ?? res);
-      setStockLoaded(true);
+      await loadInsumos();
     } catch (err) {
       addToast(err.message, 'error');
     } finally {
       setStockLoading(false);
     }
-  }, [auth.token, addToast]);
+  }, [loadInsumos, addToast]);
+
+  useEffect(() => {
+    const criticalItems = insumos
+      .filter((ins) => {
+        const stock = ins.stock_actual ?? ins.stockActual ?? 0;
+        const umbral = ins.stock_minimo ?? ins.umbral ?? 0;
+        return stock <= umbral;
+      })
+      .map((ins) => {
+        const stock = ins.stock_actual ?? ins.stockActual ?? 0;
+        const umbral = ins.stock_minimo ?? ins.umbral ?? 0;
+        
+        let criticidad = 'normal';
+        if (stock <= umbral / 2) {
+          criticidad = 'critica';
+        } else if (stock <= umbral) {
+          criticidad = 'alta';
+        }
+        
+        return {
+          id_insumo: ins.id_insumo ?? ins.id,
+          nombre: ins.nombre,
+          stock_actual: stock,
+          stock_minimo: umbral,
+          criticidad,
+        };
+      })
+      .sort((a, b) => {
+        const priority = { critica: 1, alta: 2, normal: 3 };
+        return (priority[a.criticidad] ?? 3) - (priority[b.criticidad] ?? 3);
+      });
+
+    setStockCritico(criticalItems);
+    setStockLoaded(true);
+  }, [insumos]);
 
   // Alertas
   const [alerts, setAlerts]           = useState([]);
@@ -268,7 +301,9 @@ export default function Inventario() {
       { id: 'historial',    label: 'Historial'       },
       { id: 'alertas',      label: 'Alertas'         },
     ] : []),
-    { id: 'consumo', label: 'Registrar Consumo' },
+    ...(!isAdmin ? [
+      { id: 'consumo',      label: 'Registrar Consumo' },
+    ] : []),
     ...(isAdmin ? [
       { id: 'umbral',       label: 'Actualizar Umbral' },
       { id: 'nuevoInsumo',  label: '+ Nuevo Insumo'    },
@@ -438,12 +473,16 @@ export default function Inventario() {
                   {historial.map((h, i) => (
                     <tr key={i}>
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        {h.fecha ? new Date(h.fecha).toLocaleString('es-CO') : '—'}
+                        {(h.fecha_consumo ?? h.fecha)
+                          ? new Date(h.fecha_consumo ?? h.fecha).toLocaleString('es-CO')
+                          : '—'}
                       </td>
-                      <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{h.nombre_insumo ?? h.nombre}</td>
+                      <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>
+                        {h.insumo_nombre ?? h.nombre_insumo ?? h.nombre ?? '—'}
+                      </td>
                       <td>{h.cantidad}</td>
                       <td>{h.tipo_tarea ?? h.tipoTarea ?? '—'}</td>
-                      <td>{h.usuario ?? h.nombre_usuario ?? '—'}</td>
+                      <td>{h.personal_nombre ?? h.usuario ?? h.nombre_usuario ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>
