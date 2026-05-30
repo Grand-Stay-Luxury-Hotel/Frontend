@@ -1,47 +1,301 @@
-﻿import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext.jsx';
-import GoldDatePicker from '../components/GoldDatePicker.jsx';
-import { api } from '../services/api.js';
+﻿import { useState, useEffect, useRef } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth } from "../context/AuthContext.jsx";
+import GoldDatePicker from "../components/GoldDatePicker.jsx";
+import { api } from "../services/api.js";
 
 /* --- ICONS ---------------------------------------------------- */
-const s = { width: 20, height: 20, fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' };
+const s = {
+  width: 20,
+  height: 20,
+  fill: "none",
+  stroke: "currentColor",
+  strokeWidth: 1.6,
+  strokeLinecap: "round",
+  strokeLinejoin: "round",
+};
 const s16 = { ...s, width: 16, height: 16 };
-function IconSpa()       { return <svg {...s} viewBox="0 0 24 24"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" /></svg>; }
-function IconDining()    { return <svg {...s} viewBox="0 0 24 24"><path d="M3 11l19-9-9 19-2-8-8-2z" /></svg>; }
-function IconCar()       { return <svg {...s} viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" /><polygon points="16 8 20 8 23 11 23 16 16 16 16 8" /><circle cx="5.5" cy="18.5" r="2.5" /><circle cx="18.5" cy="18.5" r="2.5" /></svg>; }
-function IconConcierge() { return <svg {...s} viewBox="0 0 24 24"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>; }
-function IconCheck()     { return <svg {...s16} viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12" /></svg>; }
-function IconUsers()     { return <svg {...s16} viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>; }
-function IconBed()       { return <svg {...s16} viewBox="0 0 24 24"><path d="M2 4v16" /><path d="M22 8H2" /><rect x="2" y="8" width="20" height="10" rx="2" /><path d="M6 8V4" /><path d="M22 8v12" /></svg>; }
+function IconSpa() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z" />
+    </svg>
+  );
+}
+function IconDining() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <path d="M3 11l19-9-9 19-2-8-8-2z" />
+    </svg>
+  );
+}
+function IconCar() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <rect x="1" y="3" width="15" height="13" />
+      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+      <circle cx="5.5" cy="18.5" r="2.5" />
+      <circle cx="18.5" cy="18.5" r="2.5" />
+    </svg>
+  );
+}
+function IconConcierge() {
+  return (
+    <svg {...s} viewBox="0 0 24 24">
+      <path d="M18 20V10" />
+      <path d="M12 20V4" />
+      <path d="M6 20v-6" />
+    </svg>
+  );
+}
+function IconCheck() {
+  return (
+    <svg {...s16} viewBox="0 0 24 24">
+      <polyline points="20 6 9 17 4 12" />
+    </svg>
+  );
+}
+function IconUsers() {
+  return (
+    <svg {...s16} viewBox="0 0 24 24">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconBed() {
+  return (
+    <svg {...s16} viewBox="0 0 24 24">
+      <path d="M2 4v16" />
+      <path d="M22 8H2" />
+      <rect x="2" y="8" width="20" height="10" rx="2" />
+      <path d="M6 8V4" />
+      <path d="M22 8v12" />
+    </svg>
+  );
+}
 
 /* --- CONSTANTES ----------------------------------------------- */
+const ROOM = [
+  {
+    id: 1,
+    nombre: "Estándar",
+    descripcion:
+      "Habitación moderna con cama cómoda, baño privado con amenidades premium y acceso a todas las facilidades del hotel.",
+    descripcion_completa:
+      "Nuestra habitación Estándar es el punto de partida perfecto para una estadía confortable. Diseñada con atención al detalle, cuenta con una cama de calidad superior, baño privado equipado con artículos de tocador de lujo, climatización individual y acceso a wifi de alta velocidad. Ideal para viajeros de negocios y turistas que buscan relación calidad-precio.",
+    capacidad: 2,
+    camas: 1,
+    precio_base: 150000, // COP
+    precio_noche: 150000,
+    temporada: "Media",
+    ubicacion: {
+      piso: "2-5",
+      ala: "Ala Este",
+      vista: "Parcial a la ciudad",
+    },
+    amenidades: [
+      "WiFi gratis",
+      'TV inteligente 43"',
+      "Climatización individual",
+      "Baño privado",
+      "Toiletries de lujo",
+      "Escritorio de trabajo",
+    ],
+    imagen_url:
+      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=700&q=80",
+    imagen_url_optimizada:
+      "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=500&q=80",
+    badge: "Más solicitada",
+    destacado: true,
+  },
+  {
+    id: 2,
+    nombre: "Deluxe",
+    descripcion:
+      "Suite moderna con estar independiente, cama king size y vistas panorámicas a la ciudad desde balcón privado.",
+    descripcion_completa:
+      "La suite Deluxe representa el equilibrio perfecto entre lujo y funcionalidad. Cuenta con un área de estar separada, cama king size de primera calidad, balcón privado con vistas panorámicas, baño con jacuzzi y ducha de efecto lluvia. Incluye minibar completamente surtido, servicio de concierge las 24 horas y acceso prioritario a todos nuestros servicios.",
+    capacidad: 2,
+    camas: 1,
+    precio_base: 280000, // COP
+    precio_noche: 280000,
+    temporada: "Alta",
+    ubicacion: {
+      piso: "6-15",
+      ala: "Ala Oeste",
+      vista: "Panorámica de la ciudad",
+    },
+    amenidades: [
+      "Estar independiente",
+      "Cama King Size",
+      "Balcón privado",
+      "Jacuzzi",
+      "Ducha lluvia",
+      "Minibar completo",
+      "Servicio concierge 24/7",
+      "Robes de seda",
+    ],
+    imagen_url:
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=800&q=80",
+    imagen_url_optimizada:
+      "https://images.unsplash.com/photo-1566665797739-1674de7a421a?w=500&q=80",
+    badge: null,
+    destacado: false,
+  },
+  {
+    id: 3,
+    nombre: "Suite Junior",
+    descripcion:
+      "Suite elegante con dormitorio amplio, sala de estar espaciosa y baño de mármol con acabados premium.",
+    descripcion_completa:
+      "La Suite Junior ofrece una experiencia de lujo accesible con espacios generosos. Incluye dormitorio con cama queen, sala de estar con sofá, escritorio ejecutivo, baño de mármol con productos de baño personalizados y acceso prioritario a restaurante y spa. Perfecta para huéspedes que desean un poco más de espacio y privacidad sin llegar al nivel presidencial.",
+    capacidad: 2,
+    camas: 1,
+    precio_base: 450000, // COP
+    precio_noche: 450000,
+    temporada: "Media",
+    ubicacion: {
+      piso: "10-18",
+      ala: "Ala Central",
+      vista: "Vista a jardines y parcial ciudad",
+    },
+    amenidades: [
+      "Dormitorio y sala separados",
+      "Cama Queen Size",
+      "Sofá de diseñador",
+      "Baño mármol",
+      "Ducha lluvia + tina",
+      "Escritorio ejecutivo",
+      "Productos de baño personalizados",
+      "Ropa de cama de alta calidad",
+    ],
+    imagen_url:
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=800&q=80",
+    imagen_url_optimizada:
+      "https://images.unsplash.com/photo-1611892440504-42a792e24d32?w=500&q=80",
+    badge: null,
+    destacado: false,
+  },
+  {
+    id: 4,
+    nombre: "Suite Senior",
+    descripcion:
+      "Suite de lujo con vista al atardecer, terraza privada, baño spa y acceso exclusivo a salones VIP.",
+    descripcion_completa:
+      "La Suite Senior es un oasis de tranquilidad con vistas espectaculares al atardecer. Caracterizada por su elegancia atemporal, incluye dormitorio premium con cama doble de lujo, terraza privada amueblada, baño spa con sauna integrada, sala de estar con vista, minibar de cortesía y servicio de butler personalizado. Acceso exclusivo a salones ejecutivos y privilegios especiales en todos nuestros servicios.",
+    capacidad: 3,
+    camas: 1,
+    precio_base: 750000, // COP
+    precio_noche: 750000,
+    temporada: "Alta",
+    ubicacion: {
+      piso: "16-20",
+      ala: "Ala Premium",
+      vista: "Atardecer y horizonte de la ciudad",
+    },
+    amenidades: [
+      "Terraza privada",
+      "Baño spa",
+      "Sauna integrada",
+      "Cama de lujo",
+      "Minibar cortesía",
+      "Butler personal",
+      "Salón ejecutivo acceso",
+      "Servicio de turndown nocturno",
+    ],
+    imagen_url:
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=800&q=80",
+    imagen_url_optimizada:
+      "https://images.unsplash.com/photo-1578683010236-d716f9a3f461?w=500&q=80",
+    badge: null,
+    destacado: false,
+  },
+  {
+    id: 5,
+    nombre: "Presidencial",
+    descripcion:
+      "Suite exclusiva de dos pisos con vista de 360°, servicios de mayordomía y acceso a áreas privadas del hotel.",
+    descripcion_completa:
+      "La Suite Presidencial es la máxima expresión del lujo en Grand Stay. Distribuida en dos niveles, cuenta con dormitorio principal y suite de huéspedes, sala de estar con vista de 360°, comedor privado, cocina completa, baño spa de mármol con jacuzzi, sauna y hamam. Servicio de mayordomía dedicado las 24 horas, chef privado disponible y acceso exclusivo a todas las facilidades. El epicentro del refinamiento absoluto.",
+    capacidad: 4,
+    camas: 2,
+    precio_base: 2000000, // COP
+    precio_noche: 2000000,
+    temporada: "Especial",
+    ubicacion: {
+      piso: "21 (Penthouse)",
+      ala: "Única",
+      vista: "360° panorámica completa",
+    },
+    amenidades: [
+      "Dos pisos",
+      "Dormitorio principal + suite huéspedes",
+      "Sala de estar vista 360°",
+      "Comedor privado",
+      "Cocina completa",
+      "Baño spa lujo",
+      "Jacuzzi y sauna",
+      "Mayordomía 24/7",
+      "Chef privado",
+      "Bar privado",
+    ],
+    imagen_url:
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=700&q=80",
+    imagen_url_optimizada:
+      "https://images.unsplash.com/photo-1590490360182-c33d57733427?w=500&q=80",
+    badge: "Exclusiva",
+    destacado: false,
+  },
+];
+
 const TESTIMONIALS = [
   {
-    quote: 'Una experiencia que redefine el significado del lujo. Cada detalle fue cuidado con una atención que pocas veces he visto en mis 20 años de viajes de negocios.',
-    name: 'Carlos Mendoza',
-    platform: 'Booking.com - 5 estrellas',
-    avatar: 'https://i.pravatar.cc/80?img=12',
+    quote:
+      "Una experiencia que redefine el significado del lujo. Cada detalle fue cuidado con una atención que pocas veces he visto en mis 20 años de viajes de negocios.",
+    name: "Carlos Mendoza",
+    platform: "Booking.com - 5 estrellas",
+    avatar: "https://i.pravatar.cc/80?img=12",
   },
   {
-    quote: 'La suite presidencial superó todas mis expectativas. El personal anticipaba cada necesidad antes de expresarla. Volveré sin dudarlo.',
-    name: 'Sofia Hartmann',
-    platform: 'TripAdvisor - 5 estrellas',
-    avatar: 'https://i.pravatar.cc/80?img=47',
+    quote:
+      "La suite presidencial superó todas mis expectativas. El personal anticipaba cada necesidad antes de expresarla. Volveré sin dudarlo.",
+    name: "Sofia Hartmann",
+    platform: "TripAdvisor - 5 estrellas",
+    avatar: "https://i.pravatar.cc/80?img=47",
   },
   {
-    quote: 'Pasé mi luna de miel en Grand Stay y fue mágico. El spa, el restaurante, la vista... todo perfectamente orquestado.',
-    name: 'Alejandro & Valeria',
-    platform: 'Google Reviews - 5 estrellas',
-    avatar: 'https://i.pravatar.cc/80?img=23',
+    quote:
+      "Pasé mi luna de miel en Grand Stay y fue mágico. El spa, el restaurante, la vista... todo perfectamente orquestado.",
+    name: "Alejandro & Valeria",
+    platform: "Google Reviews - 5 estrellas",
+    avatar: "https://i.pravatar.cc/80?img=23",
   },
 ];
 
 const AMENITIES = [
-  { icon: <IconSpa />,       title: 'Spa & Wellness',    desc: 'Tratamientos exclusivos, sauna finlandesa y piscina de hidromasaje con agua termal.' },
-  { icon: <IconDining />,    title: 'Alta Gastronomía',  desc: 'Restaurante con chef galardonado. Cocina de autor con ingredientes de temporada.' },
-  { icon: <IconCar />,       title: 'Traslado Privado',  desc: 'Flota de vehículos de lujo disponibles al aeropuerto y destinos locales.' },
-  { icon: <IconConcierge />, title: 'Concierge 24/7',    desc: 'Reservas, recomendaciones y atención personalizada en cualquier momento.' },
+  {
+    icon: <IconSpa />,
+    title: "Spa & Wellness",
+    desc: "Tratamientos exclusivos, sauna finlandesa y piscina de hidromasaje con agua termal.",
+  },
+  {
+    icon: <IconDining />,
+    title: "Alta Gastronomía",
+    desc: "Restaurante con chef galardonado. Cocina de autor con ingredientes de temporada.",
+  },
+  {
+    icon: <IconCar />,
+    title: "Traslado Privado",
+    desc: "Flota de vehículos de lujo disponibles al aeropuerto y destinos locales.",
+  },
+  {
+    icon: <IconConcierge />,
+    title: "Concierge 24/7",
+    desc: "Reservas, recomendaciones y atención personalizada en cualquier momento.",
+  },
 ];
 
 function StarIcon() {
@@ -54,84 +308,346 @@ function StarIcon() {
 
 function RoomModal({ room, onClose }) {
   useEffect(() => {
-    const onKey = (e) => { if (e.key === 'Escape') onClose(); };
-    document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    document.body.style.overflow = "hidden";
     return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = "";
     };
   }, [onClose]);
 
   return (
     <div
       style={{
-        position: 'fixed', inset: 0, zIndex: 9999,
-        background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem',
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        background: "rgba(0,0,0,0.8)",
+        backdropFilter: "blur(6px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "1rem",
       }}
       onClick={onClose}
     >
       <div
         style={{
-          background: 'var(--c-surface)', border: '1px solid var(--c-gold-border)',
-          borderRadius: 'var(--r-lg)', maxWidth: 640, width: '100%',
-          maxHeight: '90vh', overflowY: 'auto', position: 'relative',
+          background: "var(--c-surface)",
+          border: "1px solid var(--c-gold-border)",
+          borderRadius: "var(--r-lg)",
+          maxWidth: 700,
+          width: "100%",
+          maxHeight: "90vh",
+          overflowY: "auto",
+          position: "relative",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <img
-          src={room.imagen_url}
-          alt={room.nombre}
-          style={{ width: '100%', height: 260, objectFit: 'cover', borderRadius: 'var(--r-lg) var(--r-lg) 0 0' }}
-        />
-        <button
-          onClick={onClose}
-          style={{
-            position: 'absolute', top: 12, right: 12,
-            background: 'rgba(0,0,0,0.6)', border: 'none', borderRadius: '50%',
-            width: 36, height: 36, cursor: 'pointer', color: '#fff',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.1rem',
-          }}
-          aria-label="Cerrar"
-        >X</button>
-        <div style={{ padding: '1.5rem' }}>
-          <p style={{ color: 'var(--c-gold)', fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.15em', marginBottom: '0.25rem' }}>
-            Habitación
-          </p>
-          <h2 style={{ fontFamily: 'var(--f-heading)', fontSize: '1.5rem', color: 'var(--c-text)', marginBottom: '0.75rem' }}>
-            {room.nombre}
-          </h2>
-          <p style={{ color: 'var(--c-text-2)', fontSize: '0.875rem', lineHeight: 1.7, marginBottom: '1rem' }}>
-            {room.descripcion}
-          </p>
-          <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-            <span style={{ color: 'var(--c-text-2)', fontSize: '0.8rem' }}>
-              <strong style={{ color: 'var(--c-text)' }}>Capacidad:</strong> {room.capacidad} huésped{room.capacidad !== 1 ? 'es' : ''}
+        {/* Imagen Header */}
+        <div style={{ position: "relative" }}>
+          <img
+            src={room.imagen_url}
+            alt={room.nombre}
+            style={{ width: "100%", height: 280, objectFit: "cover" }}
+          />
+          {room.badge && (
+            <span
+              style={{
+                position: "absolute",
+                top: 16,
+                left: 16,
+                background: "var(--c-gold)",
+                color: "var(--c-bg)",
+                padding: "0.4rem 0.8rem",
+                borderRadius: "var(--r-md)",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                textTransform: "uppercase",
+              }}
+            >
+              {room.badge}
             </span>
-            <span style={{ color: 'var(--c-text-2)', fontSize: '0.8rem' }}>
-              <strong style={{ color: 'var(--c-text)' }}>Camas:</strong> {room.camas}
-            </span>
-            {room.precio_noche && (
-              <span style={{ color: 'var(--c-gold)', fontSize: '0.9rem', fontWeight: 600 }}>
-                ${Number(room.precio_noche).toLocaleString('es-CO')} / noche
+          )}
+          <button
+            onClick={onClose}
+            style={{
+              position: "absolute",
+              top: 12,
+              right: 12,
+              background: "rgba(0,0,0,0.6)",
+              border: "none",
+              borderRadius: "50%",
+              width: 36,
+              height: 36,
+              cursor: "pointer",
+              color: "#fff",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "1.1rem",
+            }}
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div style={{ padding: "2rem" }}>
+          {/* Título y Temporada */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "1rem",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <p
+              style={{
+                color: "var(--c-gold)",
+                fontSize: "0.75rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.15em",
+              }}
+            >
+              Habitación {room.nombre}
+            </p>
+            {room.temporada && (
+              <span
+                style={{
+                  background:
+                    room.temporada === "Alta"
+                      ? "#e74c3c"
+                      : room.temporada === "Especial"
+                        ? "#9b59b6"
+                        : "#b8860b",
+                  color: "#fff",
+                  padding: "0.2rem 0.6rem",
+                  borderRadius: "0.25rem",
+                  fontSize: "0.7rem",
+                  fontWeight: 600,
+                }}
+              >
+                {room.temporada}
               </span>
             )}
           </div>
-          {Array.isArray(room.amenidades) && room.amenidades.length > 0 && (
+
+          <h2
+            style={{
+              fontFamily: "var(--f-heading)",
+              fontSize: "2rem",
+              color: "var(--c-text)",
+              marginBottom: "1rem",
+            }}
+          >
+            {room.nombre}
+          </h2>
+
+          {/* Precio Destacado */}
+          {room.precio_noche && (
+            <div
+              style={{
+                background: "var(--c-gold-bg)",
+                border: "2px solid var(--c-gold)",
+                borderRadius: "var(--r-md)",
+                padding: "1rem",
+                marginBottom: "1.5rem",
+              }}
+            >
+              <p
+                style={{
+                  color: "var(--c-text-2)",
+                  fontSize: "0.8rem",
+                  marginBottom: "0.25rem",
+                }}
+              >
+                Desde
+              </p>
+              <p
+                style={{
+                  color: "var(--c-gold)",
+                  fontSize: "1.8rem",
+                  fontWeight: 700,
+                }}
+              >
+                ${Number(room.precio_noche).toLocaleString("es-CO")}
+              </p>
+              <p style={{ color: "var(--c-text-2)", fontSize: "0.8rem" }}>
+                por noche
+              </p>
+            </div>
+          )}
+
+          {/* Descripción Completa */}
+          <div style={{ marginBottom: "1.5rem" }}>
+            <p
+              style={{
+                color: "var(--c-text-2)",
+                fontSize: "0.9rem",
+                lineHeight: 1.8,
+              }}
+            >
+              {room.descripcion_completa || room.descripcion}
+            </p>
+          </div>
+
+          {/* Grid de Características y Ubicación */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "1.5rem",
+              marginBottom: "1.5rem",
+            }}
+          >
+            {/* Características */}
             <div>
-              <p style={{ color: 'var(--c-text)', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <p
+                style={{
+                  color: "var(--c-text)",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Características
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                <span style={{ color: "var(--c-text-2)", fontSize: "0.85rem" }}>
+                  <strong style={{ color: "var(--c-text)" }}>
+                    Capacidad:
+                  </strong>{" "}
+                  {room.capacidad} huésped{room.capacidad !== 1 ? "es" : ""}
+                </span>
+                <span style={{ color: "var(--c-text-2)", fontSize: "0.85rem" }}>
+                  <strong style={{ color: "var(--c-text)" }}>Camas:</strong>{" "}
+                  {room.camas} cama{room.camas !== 1 ? "s" : ""}
+                </span>
+              </div>
+            </div>
+
+            {/* Ubicación */}
+            <div>
+              <p
+                style={{
+                  color: "var(--c-text)",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  marginBottom: "0.75rem",
+                }}
+              >
+                Ubicación
+              </p>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.5rem",
+                }}
+              >
+                {room.ubicacion?.piso && (
+                  <span
+                    style={{ color: "var(--c-text-2)", fontSize: "0.85rem" }}
+                  >
+                    <strong style={{ color: "var(--c-text)" }}>
+                      Pisos:
+                    </strong>{" "}
+                    {room.ubicacion.piso}
+                  </span>
+                )}
+                {room.ubicacion?.ala && (
+                  <span
+                    style={{ color: "var(--c-text-2)", fontSize: "0.85rem" }}
+                  >
+                    <strong style={{ color: "var(--c-text)" }}>Ala:</strong>{" "}
+                    {room.ubicacion.ala}
+                  </span>
+                )}
+                {room.ubicacion?.vista && (
+                  <span
+                    style={{ color: "var(--c-text-2)", fontSize: "0.85rem" }}
+                  >
+                    <strong style={{ color: "var(--c-text)" }}>
+                      Vista:
+                    </strong>{" "}
+                    {room.ubicacion.vista}
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Amenidades */}
+          {Array.isArray(room.amenidades) && room.amenidades.length > 0 && (
+            <div style={{ marginBottom: "1.5rem" }}>
+              <p
+                style={{
+                  color: "var(--c-text)",
+                  fontSize: "0.85rem",
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.1em",
+                  marginBottom: "0.75rem",
+                }}
+              >
                 Amenidades
               </p>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, 1fr)",
+                  gap: "0.5rem",
+                }}
+              >
                 {room.amenidades.map((a) => (
-                  <span key={a} style={{ background: 'var(--c-gold-bg)', border: '1px solid var(--c-gold-border)', color: 'var(--c-gold-light)', borderRadius: 'var(--r-sm)', padding: '0.2rem 0.6rem', fontSize: '0.75rem' }}>{a}</span>
+                  <span
+                    key={a}
+                    style={{
+                      background: "var(--c-gold-bg)",
+                      border: "1px solid var(--c-gold-border)",
+                      color: "var(--c-gold-light)",
+                      borderRadius: "var(--r-sm)",
+                      padding: "0.4rem 0.6rem",
+                      fontSize: "0.8rem",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "0.4rem",
+                    }}
+                  >
+                    <span style={{ fontSize: "0.9rem" }}>✓</span> {a}
+                  </span>
                 ))}
               </div>
             </div>
           )}
-          <div style={{ marginTop: '1.5rem' }}>
-            <Link to="/registro" className="btn btn-gold" style={{ display: 'inline-block' }}>Reservar Esta Habitación</Link>
+
+          {/* Botón de acción */}
+          <div style={{ display: "flex", gap: "0.75rem" }}>
+            <Link to="/registro" className="btn btn-gold" style={{ flex: 1 }}>
+              Reservar Esta Habitación
+            </Link>
+            <button
+              onClick={onClose}
+              className="btn btn-outline"
+              style={{ flex: 1 }}
+            >
+              Cerrar
+            </button>
           </div>
         </div>
       </div>
@@ -143,29 +659,31 @@ export default function Landing() {
   const { auth } = useAuth();
   const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
-  const [booking, setBooking] = useState({ fechaEntrada: '', fechaSalida: '', tipo: '' });
+  const [booking, setBooking] = useState({
+    fechaEntrada: "",
+    fechaSalida: "",
+    tipo: "",
+  });
   const [tipos, setTipos] = useState([]);
   const [selectedRoom, setSelectedRoom] = useState(null);
   const heroRef = useRef(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => window.removeEventListener('scroll', onScroll);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
-    api.habitacionesTipos.listar()
-      .then((res) => setTipos(res.data ?? res))
-      .catch(() => {});
+    setTipos(ROOM);
   }, []);
 
   const handleBooking = (e) => {
     e.preventDefault();
     const params = new URLSearchParams();
-    if (booking.fechaEntrada) params.set('fechaEntrada', booking.fechaEntrada);
-    if (booking.fechaSalida)  params.set('fechaSalida',  booking.fechaSalida);
-    if (booking.tipo)         params.set('tipo',         booking.tipo);
+    if (booking.fechaEntrada) params.set("fechaEntrada", booking.fechaEntrada);
+    if (booking.fechaSalida) params.set("fechaSalida", booking.fechaSalida);
+    if (booking.tipo) params.set("tipo", booking.tipo);
     if (auth?.token) {
       navigate(`/dashboard/disponibilidad?${params}`);
     } else {
@@ -174,28 +692,54 @@ export default function Landing() {
   };
 
   const scrollTo = (id) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
   };
 
   return (
-    <div style={{ background: 'var(--c-bg)' }}>
-      {selectedRoom && <RoomModal room={selectedRoom} onClose={() => setSelectedRoom(null)} />}
+    <div style={{ background: "var(--c-bg)" }}>
+      {selectedRoom && (
+        <RoomModal room={selectedRoom} onClose={() => setSelectedRoom(null)} />
+      )}
 
-      <nav className={`landing-nav${scrolled ? ' scrolled' : ''}`}>
+      <nav className={`landing-nav${scrolled ? " scrolled" : ""}`}>
         <div className="nav-inner">
-          <div className="nav-logo">Grand <span>Stay</span></div>
+          <div className="nav-logo">
+            Grand <span>Stay</span>
+          </div>
           <ul className="nav-links">
-            {[['Inicio', 'hero'], ['Habitaciones', 'rooms'], ['Experiencia', 'experience'], ['Precios', 'pricing']].map(([l, id]) => (
-              <li key={id}><button className="nav-link" style={{ background: 'none', cursor: 'pointer' }} onClick={() => scrollTo(id)}>{l}</button></li>
+            {[
+              ["Inicio", "hero"],
+              ["Habitaciones", "rooms"],
+              ["Experiencia", "experience"],
+              ["Precios", "pricing"],
+            ].map(([l, id]) => (
+              <li key={id}>
+                <button
+                  className="nav-link"
+                  style={{ background: "none", cursor: "pointer" }}
+                  onClick={() => scrollTo(id)}
+                >
+                  {l}
+                </button>
+              </li>
             ))}
           </ul>
           <div className="nav-actions">
             {auth?.token ? (
-              <button className="btn btn-gold btn-sm" onClick={() => navigate('/dashboard')}>Mi Dashboard</button>
+              <button
+                className="btn btn-gold btn-sm"
+                onClick={() => navigate("/dashboard")}
+              >
+                Mi Dashboard
+              </button>
             ) : (
               <>
-                <Link to="/login" className="nav-link">Iniciar sesión</Link>
-                <Link to="/registro" className="btn btn-outline btn-sm">Reservar</Link>
+                <Link to="/login" className="nav-link">
+                  Iniciar sesión
+                </Link>
+                <Link to="/registro" className="btn btn-outline btn-sm">
+                  Reservar
+                </Link>
               </>
             )}
           </div>
@@ -205,38 +749,96 @@ export default function Landing() {
       <section id="hero" className="hero" ref={heroRef}>
         <div className="hero-content">
           <p className="eyebrow hero-eyebrow">Hotel Boutique de Lujo</p>
-          <h1 className="hero-title">Donde el Lujo<br />Se Convierte<br />en <em>Legado</em></h1>
-          <p className="hero-sub">Una colección de experiencias únicas diseñadas para quienes aprecian lo extraordinario.</p>
+          <h1 className="hero-title">
+            Donde el Lujo
+            <br />
+            Se Convierte
+            <br />
+            en <em>Legado</em>
+          </h1>
+          <p className="hero-sub">
+            Una colección de experiencias únicas diseñadas para quienes aprecian
+            lo extraordinario.
+          </p>
           <div className="hero-actions">
-            <button className="btn btn-gold btn-lg" onClick={() => scrollTo('rooms')}>Ver Habitaciones</button>
-            <button className="btn btn-ghost btn-lg" onClick={() => scrollTo('experience')}>Nuestra Esencia</button>
+            <button
+              className="btn btn-gold btn-lg"
+              onClick={() => scrollTo("rooms")}
+            >
+              Ver Habitaciones
+            </button>
+            <button
+              className="btn btn-ghost btn-lg"
+              onClick={() => scrollTo("experience")}
+            >
+              Nuestra Esencia
+            </button>
           </div>
         </div>
         <form className="booking-widget" onSubmit={handleBooking}>
           <div className="booking-field">
             <label className="booking-label">Check-In</label>
-            <GoldDatePicker value={booking.fechaEntrada} onChange={(v) => setBooking((b) => ({ ...b, fechaEntrada: v }))} minDate={new Date().toISOString().split('T')[0]} placeholder="dd/mm/aaaa" inputClass="booking-input" />
+            <GoldDatePicker
+              value={booking.fechaEntrada}
+              onChange={(v) => setBooking((b) => ({ ...b, fechaEntrada: v }))}
+              minDate={new Date().toISOString().split("T")[0]}
+              placeholder="dd/mm/aaaa"
+              inputClass="booking-input"
+            />
           </div>
           <div className="booking-field">
             <label className="booking-label">Check-Out</label>
-            <GoldDatePicker value={booking.fechaSalida} onChange={(v) => setBooking((b) => ({ ...b, fechaSalida: v }))} minDate={booking.fechaEntrada || new Date().toISOString().split('T')[0]} placeholder="dd/mm/aaaa" inputClass="booking-input" />
+            <GoldDatePicker
+              value={booking.fechaSalida}
+              onChange={(v) => setBooking((b) => ({ ...b, fechaSalida: v }))}
+              minDate={
+                booking.fechaEntrada || new Date().toISOString().split("T")[0]
+              }
+              placeholder="dd/mm/aaaa"
+              inputClass="booking-input"
+            />
           </div>
           <div className="booking-field">
             <label className="booking-label">Tipo de Habitación</label>
-            <select className="booking-select" value={booking.tipo} onChange={(e) => setBooking((b) => ({ ...b, tipo: e.target.value }))}>
+            <select
+              className="booking-select"
+              value={booking.tipo}
+              onChange={(e) =>
+                setBooking((b) => ({ ...b, tipo: e.target.value }))
+              }
+            >
               <option value="">Cualquier tipo</option>
-              {tipos.map((t) => (<option key={t.id_tipo} value={t.nombre}>{t.nombre}</option>))}
+              {tipos.map((t) => (
+                <option key={t.id_tipo} value={t.nombre}>
+                  {t.nombre}
+                </option>
+              ))}
             </select>
           </div>
-          <button type="submit" className="btn btn-gold" style={{ whiteSpace: 'nowrap' }}>Verificar Disponibilidad</button>
+          <button
+            type="submit"
+            className="btn btn-gold"
+            style={{ whiteSpace: "nowrap" }}
+          >
+            Verificar Disponibilidad
+          </button>
         </form>
       </section>
 
       <div className="stats-bar">
         <div className="stats-inner">
-          <div className="stat-item"><div className="number">12+</div><div className="label">Años de Excelencia</div></div>
-          <div className="stat-item"><div className="number">150+</div><div className="label">Habitaciones Premium</div></div>
-          <div className="stat-item"><div className="number">4.9 estrellas</div><div className="label">Calificación Promedio</div></div>
+          <div className="stat-item">
+            <div className="number">12+</div>
+            <div className="label">Años de Excelencia</div>
+          </div>
+          <div className="stat-item">
+            <div className="number">150+</div>
+            <div className="label">Habitaciones Premium</div>
+          </div>
+          <div className="stat-item">
+            <div className="number">4.9 estrellas</div>
+            <div className="label">Calificación Promedio</div>
+          </div>
         </div>
       </div>
 
@@ -246,32 +848,121 @@ export default function Landing() {
             <p className="eyebrow">Acomodaciones</p>
             <span className="gold-line gold-line-center" />
             <h2 className="section-title">Nuestras Habitaciones</h2>
-            <p className="section-sub mt-xs">Espacios diseñados para trascender la rutina. Cada estancia es una experiencia curada para sus sentidos.</p>
+            <p className="section-sub mt-xs">
+              Espacios diseñados para trascender la rutina. Cada estancia es una
+              experiencia curada para sus sentidos.
+            </p>
           </div>
           <div className="grid-4 mt-lg">
             {tipos.map((room, idx) => (
-              <article key={room.id_tipo} className="room-card">
+              <article key={room.id} className="room-card">
                 <div className="room-image">
                   <img src={room.imagen_url} alt={room.nombre} loading="lazy" />
-                  {idx === 0 && <span className="room-badge badge badge-gold">Más solicitada</span>}
+                  {idx === 0 && (
+                    <span className="room-badge badge badge-gold">
+                      Más solicitada
+                    </span>
+                  )}
                 </div>
                 <div className="room-info">
                   <p className="room-type">Habitación {room.nombre}</p>
                   <h3 className="room-name">{room.nombre}</h3>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--c-text-2)', marginBottom: '1rem', lineHeight: 1.7 }}>{room.descripcion}</p>
+                  <p
+                    style={{
+                      fontSize: "0.8rem",
+                      color: "var(--c-text-2)",
+                      marginBottom: "0.75rem",
+                      lineHeight: 1.6,
+                    }}
+                  >
+                    {room.descripcion}
+                  </p>
+
+                  {/* Ubicación en card */}
+                  {room.ubicacion && (
+                    <div
+                      style={{
+                        background: "var(--c-gold-bg)",
+                        borderRadius: "0.25rem",
+                        padding: "0.5rem 0.75rem",
+                        marginBottom: "0.75rem",
+                        fontSize: "0.75rem",
+                        color: "var(--c-text-2)",
+                      }}
+                    >
+                      {room.ubicacion.piso && (
+                        <div>
+                          <strong style={{ color: "var(--c-gold)" }}>
+                            Pisos:
+                          </strong>{" "}
+                          {room.ubicacion.piso}
+                        </div>
+                      )}
+                      {room.ubicacion.ala && (
+                        <div>
+                          <strong style={{ color: "var(--c-gold)" }}>
+                            Ala:
+                          </strong>{" "}
+                          {room.ubicacion.ala}
+                        </div>
+                      )}
+                      {room.ubicacion.vista && (
+                        <div>
+                          <strong style={{ color: "var(--c-gold)" }}>
+                            Vista:
+                          </strong>{" "}
+                          {room.ubicacion.vista}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div className="room-features">
-                    <span className="room-feat"><IconUsers /> {room.capacidad} huésped{room.capacidad !== 1 ? 'es' : ''}</span>
-                    <span className="room-feat"><IconBed /> {room.camas}</span>
+                    <span className="room-feat">
+                      <IconUsers /> {room.capacidad} huésped
+                      {room.capacidad !== 1 ? "es" : ""}
+                    </span>
+                    <span className="room-feat">
+                      <IconBed /> {room.camas}
+                    </span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      marginTop: "0.75rem",
+                      flexWrap: "wrap",
+                      gap: "0.5rem",
+                    }}
+                  >
                     {room.precio_noche ? (
-                      <div className="room-price"><span className="amount">${Number(room.precio_noche).toLocaleString('es-CO')}</span><span className="per">/ noche</span></div>
+                      <div className="room-price">
+                        <span className="amount">
+                          ${Number(room.precio_noche).toLocaleString("es-CO")}
+                        </span>
+                        <span className="per">/ noche</span>
+                      </div>
                     ) : (
-                      <span style={{ color: 'var(--c-text-3)', fontSize: '0.8rem' }}>Consultar precio</span>
+                      <span
+                        style={{ color: "var(--c-text-3)", fontSize: "0.8rem" }}
+                      >
+                        Consultar precio
+                      </span>
                     )}
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-ghost btn-sm" onClick={() => setSelectedRoom(room)} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>Ver detalle</button>
-                      <Link to="/registro" className="btn btn-outline btn-sm">Reservar</Link>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => setSelectedRoom(room)}
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "0.3rem 0.6rem",
+                        }}
+                      >
+                        Ver detalle
+                      </button>
+                      <Link to="/registro" className="btn btn-outline btn-sm">
+                        Reservar
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -285,26 +976,56 @@ export default function Landing() {
         <div className="container">
           <div className="grid-2">
             <div className="experience-img">
-              <img src="https://images.unsplash.com/photo-1602872030219-ad2b9a54315c?w=900&q=80" alt="Suite interior Grand Stay" loading="lazy" />
+              <img
+                src="https://images.unsplash.com/photo-1602872030219-ad2b9a54315c?w=900&q=80"
+                alt="Suite interior Grand Stay"
+                loading="lazy"
+              />
             </div>
             <div className="experience-text">
               <p className="eyebrow">Nuestra Filosofía</p>
               <span className="gold-line" />
-              <h2 className="section-title">Una Escapada que<br />Recordará Siempre</h2>
-              <p className="section-sub mt-sm">En Grand Stay no vendemos habitaciones, creamos momentos. Cada rincón ha sido concebido para que su estancia sea un viaje sensorial sin igual.</p>
+              <h2 className="section-title">
+                Una Escapada que
+                <br />
+                Recordará Siempre
+              </h2>
+              <p className="section-sub mt-sm">
+                En Grand Stay no vendemos habitaciones, creamos momentos. Cada
+                rincón ha sido concebido para que su estancia sea un viaje
+                sensorial sin igual.
+              </p>
               <div className="experience-list">
                 {[
-                  ['Diseño', 'Interiorismo de autor con materiales nobles y arte original.'],
-                  ['Gastronomía', 'Menú de temporada elaborado por chefs reconocidos internacionalmente.'],
-                  ['Bienestar', 'Spa, yoga y programas de wellness diseñados a su medida.'],
+                  [
+                    "Diseño",
+                    "Interiorismo de autor con materiales nobles y arte original.",
+                  ],
+                  [
+                    "Gastronomía",
+                    "Menú de temporada elaborado por chefs reconocidos internacionalmente.",
+                  ],
+                  [
+                    "Bienestar",
+                    "Spa, yoga y programas de wellness diseñados a su medida.",
+                  ],
                 ].map(([h, p]) => (
                   <div key={h} className="exp-item">
-                    <div className="exp-icon"><IconCheck /></div>
-                    <div className="exp-detail"><h4>{h}</h4><p>{p}</p></div>
+                    <div className="exp-icon">
+                      <IconCheck />
+                    </div>
+                    <div className="exp-detail">
+                      <h4>{h}</h4>
+                      <p>{p}</p>
+                    </div>
                   </div>
                 ))}
               </div>
-              <div className="mt-lg"><Link to="/login" className="btn btn-gold">Descubra Más</Link></div>
+              <div className="mt-lg">
+                <Link to="/login" className="btn btn-gold">
+                  Descubra Más
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -334,15 +1055,27 @@ export default function Landing() {
           <div className="section-center mb-md">
             <p className="eyebrow">Testimonios</p>
             <span className="gold-line gold-line-center" />
-            <h2 className="section-title">Lo Que Dicen<br />Nuestros Huéspedes</h2>
+            <h2 className="section-title">
+              Lo Que Dicen
+              <br />
+              Nuestros Huéspedes
+            </h2>
           </div>
           <div className="grid-3 mt-lg">
             {TESTIMONIALS.map((t) => (
               <div key={t.name} className="testimonial-card">
-                <div className="testimonial-stars">{[...Array(5)].map((_, i) => <StarIcon key={i} />)}</div>
+                <div className="testimonial-stars">
+                  {[...Array(5)].map((_, i) => (
+                    <StarIcon key={i} />
+                  ))}
+                </div>
                 <p className="testimonial-quote">"{t.quote}"</p>
                 <div className="testimonial-author">
-                  <img src={t.avatar} alt={t.name} className="testimonial-avatar" />
+                  <img
+                    src={t.avatar}
+                    alt={t.name}
+                    className="testimonial-avatar"
+                  />
                   <div>
                     <div className="testimonial-name">{t.name}</div>
                     <div className="testimonial-platform">{t.platform}</div>
@@ -355,11 +1088,23 @@ export default function Landing() {
       </section>
 
       <div className="promo-banner">
-        <div className="container" style={{ textAlign: 'center' }}>
+        <div className="container" style={{ textAlign: "center" }}>
           <span className="promo-badge">Oferta Especial - 40% OFF</span>
           <h2 className="promo-title">Paquete Luna de Miel</h2>
-          <p style={{ color: 'var(--c-text-2)', fontSize: '0.9rem', maxWidth: 480, margin: '0 auto 2rem' }}>Suite con cena privada, spa para dos, pétalos de rosa y champagne de bienvenida.</p>
-          <Link to="/registro" className="btn btn-gold btn-lg">Reservar Ahora</Link>
+          <p
+            style={{
+              color: "var(--c-text-2)",
+              fontSize: "0.9rem",
+              maxWidth: 480,
+              margin: "0 auto 2rem",
+            }}
+          >
+            Suite con cena privada, spa para dos, pétalos de rosa y champagne de
+            bienvenida.
+          </p>
+          <Link to="/registro" className="btn btn-gold btn-lg">
+            Reservar Ahora
+          </Link>
         </div>
       </div>
 
@@ -369,25 +1114,65 @@ export default function Landing() {
             <p className="eyebrow">Tarifas</p>
             <span className="gold-line gold-line-center" />
             <h2 className="section-title">Nuestros Paquetes</h2>
-            <p className="section-sub mt-xs">Precios por noche en temporada estándar. Incluyen desayuno buffet y acceso al spa.</p>
+            <p className="section-sub mt-xs">
+              Precios por noche en temporada estándar. Incluyen desayuno buffet
+              y acceso al spa.
+            </p>
           </div>
           <div className="grid-4 mt-lg">
             {tipos.map((t, idx) => (
-              <div key={t.id_tipo} className={`pricing-card${idx === 2 ? ' featured' : ''}`}>
-                {idx === 2 && <span className="pricing-featured-badge">Más Popular</span>}
+              <div
+                key={t.id_tipo}
+                className={`pricing-card${idx === 2 ? " featured" : ""}`}
+              >
+                {idx === 2 && (
+                  <span className="pricing-featured-badge">Más Popular</span>
+                )}
                 <p className="pricing-type">{t.nombre}</p>
                 <h3 className="pricing-name">{t.camas}</h3>
                 <div className="pricing-amount">
-                  {t.precio_noche ? <>${Number(t.precio_noche).toLocaleString('es-CO')}<span>/noche</span></> : <span style={{ fontSize: '1rem' }}>Consultar</span>}
+                  {t.precio_noche ? (
+                    <>
+                      ${Number(t.precio_noche).toLocaleString("es-CO")}
+                      <span>/noche</span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: "1rem" }}>Consultar</span>
+                  )}
                 </div>
                 <div className="pricing-features">
-                  <div className="pricing-feat"><IconCheck /><span>Capacidad: {t.capacidad} huésped{t.capacidad !== 1 ? 'es' : ''}</span></div>
-                  <div className="pricing-feat"><IconCheck /><span>{t.camas}</span></div>
-                  <div className="pricing-feat"><IconCheck /><span>Desayuno incluido</span></div>
-                  <div className="pricing-feat"><IconCheck /><span>WiFi premium</span></div>
-                  {t.amenidades?.slice(0, 2).map((a) => (<div key={a} className="pricing-feat"><IconCheck /><span>{a}</span></div>))}
+                  <div className="pricing-feat">
+                    <IconCheck />
+                    <span>
+                      Capacidad: {t.capacidad} huésped
+                      {t.capacidad !== 1 ? "es" : ""}
+                    </span>
+                  </div>
+                  <div className="pricing-feat">
+                    <IconCheck />
+                    <span>{t.camas}</span>
+                  </div>
+                  <div className="pricing-feat">
+                    <IconCheck />
+                    <span>Desayuno incluido</span>
+                  </div>
+                  <div className="pricing-feat">
+                    <IconCheck />
+                    <span>WiFi premium</span>
+                  </div>
+                  {t.amenidades?.slice(0, 2).map((a) => (
+                    <div key={a} className="pricing-feat">
+                      <IconCheck />
+                      <span>{a}</span>
+                    </div>
+                  ))}
                 </div>
-                <Link to="/registro" className={`btn btn-full ${idx === 2 ? 'btn-gold' : 'btn-outline'}`}>Reservar Ahora</Link>
+                <Link
+                  to="/registro"
+                  className={`btn btn-full ${idx === 2 ? "btn-gold" : "btn-outline"}`}
+                >
+                  Reservar Ahora
+                </Link>
               </div>
             ))}
           </div>
@@ -398,35 +1183,65 @@ export default function Landing() {
         <div className="container">
           <div className="footer-grid">
             <div className="footer-brand">
-              <div className="nav-logo">Grand <span>Stay</span></div>
-              <p>Hotel boutique de lujo donde cada detalle ha sido diseñado para brindarle una experiencia única e irrepetible.</p>
+              <div className="nav-logo">
+                Grand <span>Stay</span>
+              </div>
+              <p>
+                Hotel boutique de lujo donde cada detalle ha sido diseñado para
+                brindarle una experiencia única e irrepetible.
+              </p>
             </div>
             <div className="footer-col">
               <h4>Navegación</h4>
               <ul className="footer-links">
-                {['Inicio', 'Habitaciones', 'Experiencia', 'Precios'].map((l) => (<li key={l}><a className="footer-link" href="#hero">{l}</a></li>))}
+                {["Inicio", "Habitaciones", "Experiencia", "Precios"].map(
+                  (l) => (
+                    <li key={l}>
+                      <a className="footer-link" href="#hero">
+                        {l}
+                      </a>
+                    </li>
+                  ),
+                )}
               </ul>
             </div>
             <div className="footer-col">
               <h4>Contacto</h4>
               <ul className="footer-links">
-                <li><span className="footer-link">+57 (323) 123-4567</span></li>
-                <li><span className="footer-link">info@grandstay.com</span></li>
-                <li><span className="footer-link">Av. del Lujo, Las Villas</span></li>
-                <li><span className="footer-link">Mocoa, PTYO</span></li>
+                <li>
+                  <span className="footer-link">+57 (323) 123-4567</span>
+                </li>
+                <li>
+                  <span className="footer-link">info@grandstay.com</span>
+                </li>
+                <li>
+                  <span className="footer-link">Av. del Lujo, Las Villas</span>
+                </li>
+                <li>
+                  <span className="footer-link">Mocoa, PTYO</span>
+                </li>
               </ul>
             </div>
             <div className="footer-col">
               <h4>Newsletter</h4>
-              <p style={{ fontSize: '0.8rem', color: 'var(--c-text-2)' }}>Reciba nuestras ofertas exclusivas y novedades.</p>
+              <p style={{ fontSize: "0.8rem", color: "var(--c-text-2)" }}>
+                Reciba nuestras ofertas exclusivas y novedades.
+              </p>
               <div className="newsletter-row">
-                <input className="newsletter-input" type="email" placeholder="su@correo.com" />
+                <input
+                  className="newsletter-input"
+                  type="email"
+                  placeholder="su@correo.com"
+                />
                 <button className="btn btn-gold btn-sm">OK</button>
               </div>
             </div>
           </div>
           <div className="footer-bottom">
-            <p>(C) {new Date().getFullYear()} Grand Stay. Todos los derechos reservados.</p>
+            <p>
+              (C) {new Date().getFullYear()} Grand Stay. Todos los derechos
+              reservados.
+            </p>
             <p>Diseñado con distinción - Grand Stay Hotels</p>
           </div>
         </div>
