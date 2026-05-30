@@ -43,9 +43,9 @@ export default function Auditoria() {
     setErrorMsg('');
     try {
       const params = {};
-      if (filtros.accion)     params.accion      = filtros.accion;
-      if (filtros.tabla)      params.tabla        = filtros.tabla;
-      if (filtros.usuario_id) params.usuario_id   = filtros.usuario_id;
+      if (filtros.accion)     params.accion   = filtros.accion;
+      if (filtros.tabla)      params.tabla    = filtros.tabla;
+      if (filtros.usuario_id) params.usuario  = filtros.usuario_id;
       params.limite = filtros.limite;
       params.pagina = pag;
 
@@ -204,7 +204,7 @@ export default function Auditoria() {
                 {registros.map((r, i) => (
                   <tr key={r.id_auditoria ?? i}>
                     <td style={{ whiteSpace: 'nowrap', fontSize: '0.78rem' }}>
-                      {fmtDate(r.created_at ?? r.fecha ?? r.timestamp)}
+                      {fmtDate(r.fecha_hora ?? r.created_at ?? r.fecha ?? r.timestamp)}
                     </td>
                     <td>
                       <div style={{ fontSize: '0.82rem', color: 'var(--c-text)', fontWeight: 500 }}>
@@ -222,10 +222,10 @@ export default function Auditoria() {
                       </span>
                     </td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', fontFamily: 'monospace' }}>
-                      {r.tabla ?? r.entidad ?? '—'}
+                      {r.tabla_afectada ?? r.tabla ?? r.entidad ?? '—'}
                     </td>
                     <td style={{ fontSize: '0.82rem', color: 'var(--c-text-3)' }}>
-                      {r.id_entidad ?? r.entidad_id ?? '—'}
+                      {r.id_registro ?? r.id_entidad ?? r.entidad_id ?? '—'}
                     </td>
                     <td style={{ maxWidth: 280, fontSize: '0.75rem', color: 'var(--c-text-2)' }}>
                       {r.detalle ?? r.descripcion ?? r.descripcion_cambio ?? ''}
