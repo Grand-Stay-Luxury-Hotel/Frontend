@@ -35,10 +35,14 @@ function normalizeData(res) {
 }
 
 async function getReservaByIdOrSearch(value, token) {
-  const search = encodeURIComponent(String(value ?? '').trim());
-  const res = await request('GET', `/reservas?buscar=${search}&limite=20`, null, token);
-  const list = normalizeData(res);
-  return list.find((r) => String(r.id_reserva) === String(value)) ?? list[0] ?? null;
+  try {
+    const search = encodeURIComponent(String(value ?? '').trim());
+    const res = await request('GET', `/reservas?buscar=${search}&limite=20`, null, token);
+    const list = normalizeData(res);
+    return list.find((r) => String(r.id_reserva) === String(value)) ?? list[0] ?? null;
+  } catch {
+    return null;
+  }
 }
 
 function monthLabel(date) {
@@ -61,7 +65,9 @@ function keyMonth(date) {
 
 async function request(method, path, body = null, token = null) {
   const headers = {};
-  if (body !== null) headers['Content-Type'] = 'application/json';
+  if (body !== null && ['POST', 'PUT', 'PATCH'].includes(method.toUpperCase())) {
+    headers['Content-Type'] = 'application/json';
+  }
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${BASE}${path}`, {
@@ -71,7 +77,12 @@ async function request(method, path, body = null, token = null) {
   });
 
   let data;
-  try { data = await res.json(); } catch { data = {}; }
+  try { 
+    const text = await res.text();
+    data = text ? JSON.parse(text) : {}; 
+  } catch { 
+    data = {}; 
+  }
 
   if (!res.ok) {
     const err = new Error(data.mensaje || data.message || `Error ${res.status}`);
@@ -95,12 +106,7 @@ export const api = {
     listar: async (token = null) => {
       if (!token) return TIPOS_HAB_COMPAT;
       try {
-        const stored = sessionStorage.getItem('gs_auth');
-        const auth = stored ? JSON.parse(stored) : null;
-        if (auth?.rol === 'Huesped' || auth?.rol === 'Huésped') {
-          return TIPOS_HAB_COMPAT;
-        }
-        const res = await request('GET', '/habitaciones?limite=100', null, token);
+        const res = await request('GET', '/habitaciones?limite=50', null, token);
         const items = normalizeData(res);
         const unique = new Map();
         for (const it of items) {
@@ -123,44 +129,58 @@ export const api = {
   habitaciones: {
     listar:         async (token) => {
       try {
-        return await request('GET', '/habitaciones?limite=100', null, token);
+        return await request('GET', '/habitaciones?limite=50', null, token);
       } catch {
-        const today = new Date().toISOString().slice(0, 10);
-        const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
-        const data = await request(
-          'GET',
-          `/habitaciones/disponibilidad?${new URLSearchParams({ fechaEntrada: today, fechaSalida: tomorrow })}`,
-          null,
-          token,
-        );
-        const items = normalizeData(data);
-        return {
-          data: items.map((h) => ({
-            id_habitacion: h.id_habitacion,
-            numero_habitacion: h.numero_habitacion ?? h.numero,
-            numero: h.numero ?? h.numero_habitacion,
-            tipo_nombre: h.tipo_nombre,
-            piso: h.piso,
-            estado: h.estado ?? 'disponible',
-          })),
-        };
+        try {
+          const today = new Date().toISOString().slice(0, 10);
+          const tomorrow = new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+          const data = await request(
+            'GET',
+            `/habitaciones/disponibilidad?${new URLSearchParams({ fechaEntrada: today, fechaSalida: tomorrow })}`,
+            null,
+            token,
+          );
+          const items = normalizeData(data);
+          return {
+            data: items.map((h) => ({
+              id_habitacion: h.id_habitacion,
+              numero_habitacion: h.numero_habitacion ?? h.numero,
+              numero: h.numero ?? h.numero_habitacion,
+              tipo_nombre: h.tipo_nombre,
+              piso: h.piso,
+              estado: h.estado ?? 'disponible',
+            })),
+          };
+        } catch {
+          return { data: [], total: 0 };
+        }
       }
     },
     estadoPorNumero: async (numero, estado, token) => {
-      const res = await request('GET', '/habitaciones?limite=100', null, token);
-      const habitaciones = normalizeData(res);
-      const hab = habitaciones.find((h) => String(h.numero_habitacion ?? h.numero) === String(numero));
-      if (!hab?.id_habitacion) {
-        throw new Error(`No se encontró la habitación ${numero}`);
+      try {
+        const res = await request('GET', '/habitaciones?limite=50', null, token);
+        const habitaciones = normalizeData(res);
+        const hab = habitaciones.find((h) => String(h.numero_habitacion ?? h.numero) === String(numero));
+        if (!hab?.id_habitacion) {
+          throw new Error(`No se encontró la habitación ${numero}`);
+        }
+        return request('PATCH', `/habitaciones/${hab.id_habitacion}/estado`, { estado }, token);
+      } catch (err) {
+        throw err;
       }
-      return request('PATCH', `/habitaciones/${hab.id_habitacion}/estado`, { estado }, token);
     },
     estado:         (id, body, token)      => request('PATCH', `/habitaciones/${id}/estado`, body, token),
   },
 
   // ── Tarifas ────────────────────────────────────────────────────────────────
   tarifas: {
-    listar:     (token)              => request('GET',    '/tarifas',      null,  token),
+    listar: async (token) => {
+      try {
+        return await request('GET', '/tarifas', null, token);
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
     crear:      (body, token)        => request('POST',   '/tarifas',      body,  token),
     actualizar: (id, body, token)    => request('PUT',    `/tarifas/${id}`, body, token),
     eliminar:   (id, token)          => request('DELETE', `/tarifas/${id}`, null, token),
@@ -168,20 +188,30 @@ export const api = {
 
   // ── Reservas ───────────────────────────────────────────────────────────────
   reservas: {
-    listar:              (token)        => request('GET',    '/reservas', null, token),
+    listar: async (token) => {
+      try {
+        return await request('GET', '/reservas?limite=50', null, token);
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
     crear:               (body, token)  => request('POST',   '/reservas', body, token),
     cancelar:            (id, token)    => request('DELETE', `/reservas/${id}`, null, token),
     buscarPorDocumento: async (doc, token) => {
-      const res = await request('GET', `/reservas?buscar=${encodeURIComponent(doc)}&limite=20`, null, token);
-      const list = normalizeData(res);
-      const item = list.find((r) => String(r.huesped_documento ?? '').includes(String(doc))) ?? list[0];
-      if (!item) throw new Error('Huésped no encontrado');
-      return {
-        id_huesped: item.id_huesped,
-        nombre_completo: item.huesped_nombre,
-        email: item.huesped_email,
-        documento: item.huesped_documento,
-      };
+      try {
+        const res = await request('GET', `/reservas?buscar=${encodeURIComponent(doc)}&limite=20`, null, token);
+        const list = normalizeData(res);
+        const item = list.find((r) => String(r.huesped_documento ?? '').includes(String(doc))) ?? list[0];
+        if (!item) throw new Error('Huésped no encontrado');
+        return {
+          id_huesped: item.id_huesped,
+          nombre_completo: item.huesped_nombre,
+          email: item.huesped_email,
+          documento: item.huesped_documento,
+        };
+      } catch (err) {
+        throw err;
+      }
     },
   },
 
@@ -211,7 +241,6 @@ export const api = {
       try {
         return await request('GET', `/checkout/${reserva.id_reserva}/resumen`, null, token);
       } catch {
-        // Fallback: construir resumen básico desde los datos de la reserva
         return {
           id_reserva: reserva.id_reserva,
           estado: reserva.estado,
@@ -234,15 +263,25 @@ export const api = {
 
   // ── Facturas ───────────────────────────────────────────────────────────────
   facturas: {
-    obtener: (idReserva, token) => request('GET', `/facturas/reserva/${idReserva}`, null, token),
+    obtener: async (idReserva, token) => {
+      try {
+        return await request('GET', `/facturas/reserva/${idReserva}`, null, token);
+      } catch {
+        return { data: null };
+      }
+    },
   },
 
   // ── Consumos ───────────────────────────────────────────────────────────────
   consumos: {
     porReserva: async (reservaId, token) => {
-      const reserva = await getReservaByIdOrSearch(reservaId, token);
-      if (!reserva?.id_reserva) return { data: [] };
-      return request('GET', `/consumos/${reserva.id_reserva}`, null, token);
+      try {
+        const reserva = await getReservaByIdOrSearch(reservaId, token);
+        if (!reserva?.id_reserva) return { data: [] };
+        return await request('GET', `/consumos/${reserva.id_reserva}`, null, token);
+      } catch {
+        return { data: [] };
+      }
     },
     registrar:  async (body, token) => {
       if (body?.habitacionId) {
@@ -288,15 +327,19 @@ export const api = {
       }
     },
     stockCritico: async (token) => {
-      const res = await request('GET', '/inventario/alertas', null, token);
-      const data = normalizeData(res);
-      return data.map((a) => ({
-        id_insumo: Number(a.id_insumo),
-        nombre: a.nombre,
-        stock_actual: Number(a.stock_actual),
-        stock_minimo: Number(a.stock_minimo),
-        criticidad: a.criticidad,
-      }));
+      try {
+        const res = await request('GET', '/inventario/alertas', null, token);
+        const data = normalizeData(res);
+        return data.map((a) => ({
+          id_insumo: Number(a.id_insumo),
+          nombre: a.nombre,
+          stock_actual: Number(a.stock_actual),
+          stock_minimo: Number(a.stock_minimo),
+          criticidad: a.criticidad,
+        }));
+      } catch {
+        return [];
+      }
     },
     historial: async (params, token) => {
       try {
@@ -321,157 +364,187 @@ export const api = {
 
   // ── Reportes ───────────────────────────────────────────────────────────────
   reportes: {
-    ocupacion: (params, token) =>
-      request('GET', `/reportes/ocupacion?${new URLSearchParams(params)}`, null, token),
-    ingresos: (params, token) =>
-      request('GET', `/reportes/ingresos?${new URLSearchParams(params)}`, null, token),
+    ocupacion: async (params, token) => {
+      try {
+        return await request('GET', `/reportes/ocupacion?${new URLSearchParams(params)}`, null, token);
+      } catch {
+        return { data: [] };
+      }
+    },
+    ingresos: async (params, token) => {
+      try {
+        return await request('GET', `/reportes/ingresos?${new URLSearchParams(params)}`, null, token);
+      } catch {
+        return { data: [] };
+      }
+    },
   },
 
   // ── Cuenta huésped ─────────────────────────────────────────────────────────
   cuenta: {
     obtener: async (token) => {
-      const [reservasRes, consumosRes] = await Promise.allSettled([
-        request('GET', '/reservas/mis-reservas', null, token),
-        request('GET', '/consumos/mis-consumos', null, token),
-      ]);
+      try {
+        const [reservasRes, consumosRes] = await Promise.allSettled([
+          request('GET', '/reservas/mis-reservas', null, token),
+          request('GET', '/consumos/mis-consumos', null, token),
+        ]);
 
-      const reservas = reservasRes.status === 'fulfilled' ? normalizeData(reservasRes.value) : [];
-      const consumos = consumosRes.status === 'fulfilled' ? normalizeData(consumosRes.value) : [];
+        const reservas = reservasRes.status === 'fulfilled' ? normalizeData(reservasRes.value) : [];
+        const consumos = consumosRes.status === 'fulfilled' ? normalizeData(consumosRes.value) : [];
 
-      const totalNoches = reservas.reduce((acc, r) => {
-        if (!r.fecha_entrada || !r.fecha_salida) return acc;
-        const diff = (new Date(r.fecha_salida) - new Date(r.fecha_entrada)) / (1000 * 60 * 60 * 24);
-        return acc + (diff > 0 ? diff : 0);
-      }, 0);
+        const totalNoches = reservas.reduce((acc, r) => {
+          if (!r.fecha_entrada || !r.fecha_salida) return acc;
+          const diff = (new Date(r.fecha_salida) - new Date(r.fecha_entrada)) / (1000 * 60 * 60 * 24);
+          return acc + (diff > 0 ? diff : 0);
+        }, 0);
 
-      const totalGastado = reservas.reduce((acc, r) => acc + Number(r.monto_pagado ?? 0), 0)
-        + consumos.reduce((acc, c) => acc + Number(c.subtotal ?? 0), 0);
+        const totalGastado = reservas.reduce((acc, r) => acc + Number(r.monto_pagado ?? 0), 0)
+          + consumos.reduce((acc, c) => acc + Number(c.subtotal ?? 0), 0);
 
-      // Facturas derivadas de reservas completadas/en_curso
-      const facturas = reservas
-        .filter((r) => ['completada', 'en_curso'].includes(r.estado))
-        .map((r) => ({
-          id_reserva: r.id_reserva,
-          codigo_factura: r.codigo_confirmacion ?? `RES-${r.id_reserva}`,
-          fecha_emision: r.fecha_salida,
-          total_facturado: Number(r.monto_pagado ?? 0)
-            + consumos
-                .filter((c) => c.id_reserva === r.id_reserva)
-                .reduce((a, c) => a + Number(c.subtotal ?? 0), 0),
-          saldo_pendiente: 0,
-        }));
+        const facturas = reservas
+          .filter((r) => ['completada', 'en_curso'].includes(r.estado))
+          .map((r) => ({
+            id_reserva: r.id_reserva,
+            codigo_factura: r.codigo_confirmacion ?? `RES-${r.id_reserva}`,
+            fecha_emision: r.fecha_salida,
+            total_facturado: Number(r.monto_pagado ?? 0)
+              + consumos
+                  .filter((c) => c.id_reserva === r.id_reserva)
+                  .reduce((a, c) => a + Number(c.subtotal ?? 0), 0),
+            saldo_pendiente: 0,
+          }));
 
-      return {
-        huesped: reservas[0]
-          ? { nombre_completo: reservas[0].huesped_nombre, email: reservas[0].huesped_email }
-          : null,
-        reservas,
-        consumos,
-        facturas,
-        resumen: {
-          total_reservas: reservas.length,
-          total_noches: totalNoches,
-          total_gastado: totalGastado,
-          total_consumos: consumos.length,
-          reservas_activas: reservas.filter((r) => ['confirmada', 'en_curso', 'pendiente'].includes(r.estado)).length,
-        },
-      };
+        return {
+          huesped: reservas[0]
+            ? { nombre_completo: reservas[0].huesped_nombre, email: reservas[0].huesped_email }
+            : null,
+          reservas,
+          consumos,
+          facturas,
+          resumen: {
+            total_reservas: reservas.length,
+            total_noches: totalNoches,
+            total_gastado: totalGastado,
+            total_consumos: consumos.length,
+            reservas_activas: reservas.filter((r) => ['confirmada', 'en_curso', 'pendiente'].includes(r.estado)).length,
+          },
+        };
+      } catch {
+        return { huesped: null, reservas: [], consumos: [], facturas: [], resumen: { total_reservas: 0, total_noches: 0, total_gastado: 0, total_consumos: 0, reservas_activas: 0 } };
+      }
     },
   },
 
   // ── Dashboard Admin ────────────────────────────────────────────────────────
   dashboard: {
     resumen: async (token) => {
-      const [habRes, reservasRes] = await Promise.allSettled([
-        request('GET', '/habitaciones?limite=100', null, token),
-        request('GET', '/reservas?limite=100', null, token),
-      ]);
-
-      const habitaciones = habRes.status === 'fulfilled' ? normalizeData(habRes.value) : [];
-      const reservas = reservasRes.status === 'fulfilled' ? normalizeData(reservasRes.value) : [];
-      const totalHab = habitaciones.length;
-      const estados = habitaciones.reduce((acc, h) => {
-        const st = String(h.estado ?? '').toLowerCase();
-        acc[st] = (acc[st] ?? 0) + 1;
-        return acc;
-      }, {});
-
-      const now = new Date();
-      const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-      const currentMonthStart = startOfMonth(today);
-      const currentMonthEnd = addMonths(currentMonthStart, 1);
-
-      const reservasMesList = reservas.filter((r) => {
-        const d = new Date(`${r.fecha_entrada}T00:00:00Z`);
-        return d >= currentMonthStart && d < currentMonthEnd;
-      });
-
-      const checkinsPendientes = reservas.filter((r) => r.estado === 'confirmada').length;
-      const checkoutsPendientes = reservas.filter((r) => r.estado === 'en_curso').length;
-
-      const meses = [];
-      for (let i = 5; i >= 0; i -= 1) {
-        const d = addMonths(currentMonthStart, -i);
-        meses.push({ key: keyMonth(d), mes: monthLabel(d), reservas: 0, ingresos: 0 });
-      }
-      const mesMap = new Map(meses.map((m) => [m.key, m]));
-      reservas.forEach((r) => {
-        const d = new Date(`${r.fecha_entrada}T00:00:00Z`);
-        const key = keyMonth(d);
-        const slot = mesMap.get(key);
-        if (!slot) return;
-        slot.reservas += 1;
-        slot.ingresos += Number(r.monto_pagado ?? 0);
-      });
-
-      const porTipoMap = new Map();
-      reservas.forEach((r) => {
-        const k = r.tipo_habitacion ?? 'Sin tipo';
-        porTipoMap.set(k, (porTipoMap.get(k) ?? 0) + 1);
-      });
-
-      const porCanalMap = new Map();
-      reservas.forEach((r) => {
-        const k = r.canal_reserva ?? 'sin_canal';
-        porCanalMap.set(k, (porCanalMap.get(k) ?? 0) + 1);
-      });
-
-      let alertasInventario = 0;
       try {
-        const alertasRes = await request('GET', '/inventario/alertas?limite=1', null, token);
-        alertasInventario = Number(alertasRes.total ?? normalizeData(alertasRes).length ?? 0);
-      } catch {
-        alertasInventario = 0;
-      }
+        const [habRes, reservasRes] = await Promise.allSettled([
+          request('GET', '/habitaciones?limite=50', null, token),
+          request('GET', '/reservas?limite=50', null, token),
+        ]);
 
-      return {
-        habitaciones: {
-          total: totalHab,
-          disponible: estados.disponible ?? 0,
-          ocupada: estados.ocupada ?? 0,
-          limpieza: estados.limpieza ?? 0,
-          mantenimiento: estados.mantenimiento ?? 0,
-          bloqueada: estados.bloqueada ?? 0,
-        },
-        checkinsPendientes,
-        checkoutsPendientes,
-        reservasMes: {
-          total: reservasMesList.length,
-          ingresos: reservasMesList.reduce((acc, r) => acc + Number(r.monto_pagado ?? 0), 0),
-        },
-        alertasInventario,
-        ingresosMensuales: meses,
-        reservasPorTipo: Array.from(porTipoMap.entries()).map(([tipo, total]) => ({ tipo, total })),
-        reservasPorCanal: Array.from(porCanalMap.entries()).map(([canal, total]) => ({ canal, total })),
-      };
+        const habitaciones = habRes.status === 'fulfilled' ? normalizeData(habRes.value) : [];
+        const reservas = reservasRes.status === 'fulfilled' ? normalizeData(reservasRes.value) : [];
+        const totalHab = habitaciones.length;
+        const estados = habitaciones.reduce((acc, h) => {
+          const st = String(h.estado ?? '').toLowerCase();
+          acc[st] = (acc[st] ?? 0) + 1;
+          return acc;
+        }, {});
+
+        const now = new Date();
+        const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+        const currentMonthStart = startOfMonth(today);
+        const currentMonthEnd = addMonths(currentMonthStart, 1);
+
+        const reservasMesList = reservas.filter((r) => {
+          const d = new Date(`${r.fecha_entrada}T00:00:00Z`);
+          return d >= currentMonthStart && d < currentMonthEnd;
+        });
+
+        const checkinsPendientes = reservas.filter((r) => r.estado === 'confirmada').length;
+        const checkoutsPendientes = reservas.filter((r) => r.estado === 'en_curso').length;
+
+        const meses = [];
+        for (let i = 5; i >= 0; i -= 1) {
+          const d = addMonths(currentMonthStart, -i);
+          meses.push({ key: keyMonth(d), mes: monthLabel(d), reservas: 0, ingresos: 0 });
+        }
+        const mesMap = new Map(meses.map((m) => [m.key, m]));
+        reservas.forEach((r) => {
+          const d = new Date(`${r.fecha_entrada}T00:00:00Z`);
+          const key = keyMonth(d);
+          const slot = mesMap.get(key);
+          if (!slot) return;
+          slot.reservas += 1;
+          slot.ingresos += Number(r.monto_pagado ?? 0);
+        });
+
+        const porTipoMap = new Map();
+        reservas.forEach((r) => {
+          const k = r.tipo_habitacion ?? 'Sin tipo';
+          porTipoMap.set(k, (porTipoMap.get(k) ?? 0) + 1);
+        });
+
+        const porCanalMap = new Map();
+        reservas.forEach((r) => {
+          const k = r.canal_reserva ?? 'sin_canal';
+          porCanalMap.set(k, (porCanalMap.get(k) ?? 0) + 1);
+        });
+
+        let alertasInventario = 0;
+        try {
+          const alertasRes = await request('GET', '/inventario/alertas?limite=1', null, token);
+          alertasInventario = Number(alertasRes.total ?? normalizeData(alertasRes).length ?? 0);
+        } catch {
+          alertasInventario = 0;
+        }
+
+        return {
+          habitaciones: {
+            total: totalHab,
+            disponible: estados.disponible ?? 0,
+            ocupada: estados.ocupada ?? 0,
+            limpieza: estados.limpieza ?? 0,
+            mantenimiento: estados.mantenimiento ?? 0,
+            bloqueada: estados.bloqueada ?? 0,
+          },
+          checkinsPendientes,
+          checkoutsPendientes,
+          reservasMes: {
+            total: reservasMesList.length,
+            ingresos: reservasMesList.reduce((acc, r) => acc + Number(r.monto_pagado ?? 0), 0),
+          },
+          alertasInventario,
+          ingresosMensuales: meses,
+          reservasPorTipo: Array.from(porTipoMap.entries()).map(([tipo, total]) => ({ tipo, total })),
+          reservasPorCanal: Array.from(porCanalMap.entries()).map(([canal, total]) => ({ canal, total })),
+        };
+      } catch {
+        return {
+          habitaciones: { total: 0, disponible: 0, ocupada: 0, limpieza: 0, mantenimiento: 0, bloqueada: 0 },
+          checkinsPendientes: 0,
+          checkoutsPendientes: 0,
+          reservasMes: { total: 0, ingresos: 0 },
+          alertasInventario: 0,
+          ingresosMensuales: [],
+          reservasPorTipo: [],
+          reservasPorCanal: [],
+        };
+      }
     },
   },
 
   // ── Auditoría (Administrador) ──────────────────────────────────────────────
   auditoria: {
     listar: async (params, token) => {
-      const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
-      return request('GET', `/auditoria${qs}`, null, token);
+      try {
+        const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';
+        return await request('GET', `/auditoria${qs}`, null, token);
+      } catch {
+        return { data: [], total: 0 };
+      }
     },
   },
 };

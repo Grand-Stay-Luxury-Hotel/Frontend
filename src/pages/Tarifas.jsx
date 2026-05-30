@@ -30,18 +30,32 @@ export default function Tarifas() {
     setLoading(true);
     setError('');
     try {
-      const [resTipos, resTarifas] = await Promise.all([
+      const [resTipos, resTarifas] = await Promise.allSettled([
         api.habitacionesTipos.listar(auth.token),
         api.tarifas.listar(auth.token),
       ]);
-      setTipos(resTipos.data ?? resTipos);
-      setTarifas(resTarifas.data ?? resTarifas);
+
+      if (resTipos.status === 'fulfilled') {
+        const val = resTipos.value;
+        setTipos(val?.data ?? val ?? []);
+      }
+
+      if (resTarifas.status === 'fulfilled') {
+        const val = resTarifas.value;
+        setTarifas(val?.data ?? val ?? []);
+      }
+
+      const errores = [];
+      if (resTipos.status === 'rejected')   errores.push(`Tipos de habitación: ${resTipos.reason?.message ?? 'Error del servidor'}`);
+      if (resTarifas.status === 'rejected') errores.push(`Tarifas: ${resTarifas.reason?.message ?? 'Error del servidor'}`);
+      if (errores.length) setError(errores.join(' · '));
     } catch (e) {
       setError(e.message || 'Error al cargar tarifas');
     } finally {
       setLoading(false);
     }
   }, [auth.token]);
+
 
   useEffect(() => { cargar(); }, [cargar]);
 
@@ -141,8 +155,14 @@ export default function Tarifas() {
 
       {/* ── Error ───────────────────────────────────── */}
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--r-md)', padding: '0.75rem 1rem', color: '#f87171', marginBottom: '1rem', fontSize: '0.875rem' }}>
-          {error}
+        <div style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--r-md)', padding: '0.75rem 1rem', color: '#f87171', marginBottom: '1rem', fontSize: '0.875rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <span>⚠️ {error}</span>
+          <button
+            onClick={cargar}
+            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171', borderRadius: 'var(--r-sm)', padding: '0.3rem 0.85rem', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            ↻ Reintentar
+          </button>
         </div>
       )}
 

@@ -14,12 +14,14 @@ export default function Auditoria() {
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(false);
   const [buscado, setBuscado] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const setF = (f) => (e) => setFiltros((p) => ({ ...p, [f]: e.target.value }));
 
   const buscar = useCallback(async (pag = filtros.pagina) => {
     setLoading(true);
     setBuscado(true);
+    setErrorMsg('');
     try {
       const params = {};
       if (filtros.accion)     params.accion      = filtros.accion;
@@ -33,7 +35,11 @@ export default function Auditoria() {
       setRegistros(Array.isArray(payload) ? payload : (payload.registros ?? payload.logs ?? []));
       setTotal(payload.total ?? (Array.isArray(payload) ? payload.length : 0));
     } catch (err) {
-      addToast(err.message, 'error');
+      const msg = err.message || 'Error al consultar auditoría';
+      setErrorMsg(msg);
+      addToast(msg, 'error');
+      setRegistros([]);
+      setTotal(0);
     } finally {
       setLoading(false);
     }
@@ -119,10 +125,23 @@ export default function Auditoria() {
         </form>
       </div>
 
+      {/* ── Error banner ─────────────────────────────── */}
+      {errorMsg && !loading && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 'var(--r-md)', padding: '0.75rem 1rem', marginBottom: '1rem', fontSize: '0.875rem', color: '#f87171' }}>
+          <span>⚠️ {errorMsg}</span>
+          <button
+            onClick={() => buscar(filtros.pagina)}
+            style={{ background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.4)', color: '#f87171', borderRadius: 'var(--r-sm)', padding: '0.3rem 0.85rem', fontSize: '0.8rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            ↻ Reintentar
+          </button>
+        </div>
+      )}
+
       {/* ── Resultados ──────────────────────────────── */}
       {loading && <div className="spinner-wrap"><div className="spinner" /></div>}
 
-      {!loading && buscado && registros.length === 0 && (
+      {!loading && buscado && !errorMsg && registros.length === 0 && (
         <div className="empty-state">
           <p>No se encontraron registros con los filtros aplicados.</p>
         </div>
