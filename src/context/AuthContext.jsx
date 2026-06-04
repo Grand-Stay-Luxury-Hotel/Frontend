@@ -5,7 +5,11 @@ const IDLE_MS = 15 * 60 * 1000; // 15 minutos de inactividad
 
 function decodeToken(token) {
   try {
-    const payload = token.split('.')[1];
+    const segment = token.split('.')[1] ?? '';
+    const payload = segment
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(Math.ceil(segment.length / 4) * 4, '=');
     return JSON.parse(atob(payload));
   } catch {
     return {};
@@ -28,15 +32,16 @@ export function AuthProvider({ children }) {
 
   const login = useCallback((data) => {
     const decoded = decodeToken(data.token ?? '');
+    const usuario = data.usuario ?? {};
     const session = {
       token: data.token,
-      email: decoded.email ?? data.email ?? '',
-      rol: decoded.rol ?? data.rol ?? '',
-      id_usuario: decoded.id_usuario ?? data.id_usuario ?? null,
-      id_recepcionista: decoded.id_recepcionista ?? null,
-      id_personal: decoded.id_personal ?? null,
-      id_admin: decoded.id_admin ?? null,
-      id_huesped: decoded.id_huesped ?? null,
+      email: decoded.email ?? data.email ?? usuario.email ?? '',
+      rol: decoded.rol ?? data.rol ?? usuario.rol ?? '',
+      id_usuario: decoded.id_usuario ?? data.id_usuario ?? usuario.id_usuario ?? null,
+      id_recepcionista: decoded.id_recepcionista ?? usuario.id_recepcionista ?? null,
+      id_personal: decoded.id_personal ?? usuario.id_personal ?? null,
+      id_admin: decoded.id_admin ?? usuario.id_admin ?? null,
+      id_huesped: decoded.id_huesped ?? usuario.id_huesped ?? null,
     };
     sessionStorage.setItem('gs_auth', JSON.stringify(session));
     setAuth(session);

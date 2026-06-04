@@ -5,6 +5,7 @@ import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
 import { calcularPenalizacion } from '../utils/penalizacion.js';
 import GoldDatePicker from '../components/GoldDatePicker.jsx';
+import { isAdmin, isHuesped as hasHuespedRole, isRecepcionista } from '../utils/roles.js';
 
 const ESTADOS_ACTIVOS = ['pendiente', 'confirmada', 'en_curso'];
 const ESTADO_BADGE = {
@@ -70,14 +71,14 @@ export default function Reservas() {
 
   // Cargar habitaciones disponibles
   useEffect(() => {
-    if (auth.rol === 'Recepcionista' || auth.rol === 'Administrador') {
+    if (isRecepcionista(auth.rol) || isAdmin(auth.rol)) {
       api.habitaciones.listar(auth.token)
         .then((res) => {
           const lista = res.data ?? res;
           setHabitaciones(lista.filter((h) => h.estado === 'disponible'));
         })
         .catch(() => {});
-    } else if (auth.rol === 'Huesped' && !prefill.room) {
+    } else if (hasHuespedRole(auth.rol) && !prefill.room) {
       const entrada = form.fecha_entrada || today;
       // Fallback: entrada + 1 día (no Date.now() + 1 que puede ser < entrada)
       const salidaFallback = new Date(new Date(`${entrada}T00:00:00Z`).getTime() + 86400000).toISOString().split('T')[0];
@@ -170,8 +171,8 @@ export default function Reservas() {
     }
   };
 
-  const isRecep = ['Recepcionista'].includes(auth.rol);
-  const isHuesped = ['Huesped', 'Huésped'].includes(auth.rol);
+  const isRecep = isRecepcionista(auth.rol);
+  const isHuesped = hasHuespedRole(auth.rol);
   const canCreate = isRecep || isHuesped;
   const canCancel = isRecep;
   const esRecepAdmin = isRecep;
@@ -220,7 +221,7 @@ export default function Reservas() {
               {/* Huésped */}
               <div className="form-group">
                 <label className="form-label">Huésped</label>
-                {auth.rol === 'Huesped' ? (
+                {isHuesped ? (
                   <input type="text" className="form-input" value={`Cuenta propia · ${auth.email ?? ''}`} readOnly style={{ opacity: 0.6, cursor: 'not-allowed' }} />
                 ) : (
                   <div>

@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { api } from '../services/api.js';
+import { ROLE_LABELS as ROLE_LABEL_MAP, hasRole, isAdmin, normalizeRole } from '../utils/roles.js';
 
 const ROLE_LABELS = {
   Administrador: 'Administrador',
@@ -31,15 +32,16 @@ export default function Sidebar() {
   const { auth, logout } = useAuth();
   const navigate = useNavigate();
   const rol = auth?.rol ?? '';
-  const isAdmin = rol === 'Administrador';
+  const rolKey = normalizeRole(rol);
+  const admin = isAdmin(rol);
 
   const [alertCount, setAlertCount] = useState(0);
   useEffect(() => {
-    if (!isAdmin || !auth?.token) return;
+    if (!admin || !auth?.token) return;
     api.inventario.alertas(auth.token)
       .then(data => setAlertCount((data.data ?? data.alertas ?? []).length))
       .catch(() => {});
-  }, [isAdmin, auth?.token]);
+  }, [admin, auth?.token]);
 
   const handleLogout = () => {
     logout();
@@ -110,13 +112,13 @@ export default function Sidebar() {
         <div className="sidebar-logo">Grand <span>Stay</span></div>
         <div className="sidebar-user">
           <div className="sidebar-user-name">{auth?.email ?? 'Usuario'}</div>
-          <div className="sidebar-user-role">{ROLE_LABELS[rol] ?? rol}</div>
+          <div className="sidebar-user-role">{ROLE_LABEL_MAP[rolKey] ?? ROLE_LABELS[rol] ?? rol}</div>
         </div>
       </div>
 
       <nav className="sidebar-nav">
         {MENU_SECTIONS.map((section) => {
-          const visibleItems = section.items.filter(item => item.roles.includes(rol));
+          const visibleItems = section.items.filter(item => hasRole(rol, item.roles));
           if (visibleItems.length === 0) return null;
           return (
             <div className="sidebar-nav-section" key={section.label}>
@@ -127,7 +129,7 @@ export default function Sidebar() {
                   to={item.to}
                   label={item.label}
                   icon={item.icon}
-                  badge={item.hasBadge && isAdmin ? alertCount : 0}
+                  badge={item.hasBadge && admin ? alertCount : 0}
                 />
               ))}
             </div>
