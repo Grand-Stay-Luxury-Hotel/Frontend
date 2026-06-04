@@ -7,10 +7,38 @@ const ESTADOS = [
   { value: 'disponible',    label: 'Disponible',    badge: 'badge-success' },
   { value: 'ocupada',       label: 'Ocupada',        badge: 'badge-error'   },
   { value: 'limpieza',      label: 'En Limpieza',    badge: 'badge-warning' },
-  { value: 'sucia',         label: 'Sucia',          badge: 'badge-warning' },
   { value: 'mantenimiento', label: 'Mantenimiento',  badge: 'badge-info'    },
   { value: 'bloqueada',     label: 'Bloqueada',      badge: 'badge-gold'    },
 ];
+
+const TRANSICIONES = {
+  disponible: ['ocupada', 'mantenimiento', 'bloqueada'],
+  ocupada: ['limpieza', 'mantenimiento'],
+  limpieza: ['disponible', 'mantenimiento'],
+  mantenimiento: ['disponible', 'limpieza'],
+  bloqueada: ['disponible', 'mantenimiento'],
+};
+
+function normalizarRol(rol) {
+  return String(rol ?? '').replace(/\s+/g, '').toLowerCase();
+}
+
+function puedeCambiarA(estadoActual, estadoNuevo, rol) {
+  const rolNormalizado = normalizarRol(rol);
+  const esAdmin = ['administrador', 'admin'].includes(rolNormalizado);
+  const esRecepcion = rolNormalizado === 'recepcionista';
+  const esLimpieza = ['personallimpieza', 'limpieza'].includes(rolNormalizado);
+  const esTecnico = ['serviciotecnico', 'serviciotecnico'].includes(rolNormalizado);
+
+  if (!TRANSICIONES[estadoActual]?.includes(estadoNuevo)) return false;
+  if (estadoActual === 'limpieza' && estadoNuevo === 'disponible') return esLimpieza || esAdmin;
+  if (estadoNuevo === 'bloqueada') return esRecepcion || esAdmin;
+  if (estadoNuevo === 'mantenimiento') return esRecepcion || esAdmin || esTecnico;
+  if (estadoActual === 'mantenimiento') return esRecepcion || esAdmin || esTecnico;
+  if (estadoActual === 'ocupada' && estadoNuevo === 'limpieza') return esRecepcion || esAdmin;
+  if (estadoActual === 'disponible' && estadoNuevo === 'ocupada') return esRecepcion || esAdmin;
+  return esAdmin || esRecepcion || esLimpieza || esTecnico;
+}
 
 export default function Habitaciones() {
   const { auth } = useAuth();
@@ -22,6 +50,11 @@ export default function Habitaciones() {
   const [form, setForm] = useState({ numero: '', estado: 'limpieza', observaciones: '' });
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+
+  const selectedRoom = habitaciones.find((h) => String(h.numero_habitacion ?? h.numero ?? '') === String(form.numero));
+  const estadosPermitidos = selectedRoom
+    ? ESTADOS.filter((e) => puedeCambiarA(selectedRoom.estado, e.value, auth?.rol))
+    : ESTADOS.filter((e) => e.value !== 'ocupada');
 
   const cargar = useCallback(async () => {
     setLoadingHabs(true);
@@ -39,6 +72,13 @@ export default function Habitaciones() {
 
   const set = (f) => (e) => setForm((prev) => ({ ...prev, [f]: e.target.value }));
 
+  useEffect(() => {
+    if (!selectedRoom || estadosPermitidos.length === 0) return;
+    if (!estadosPermitidos.some((e) => e.value === form.estado)) {
+      setForm((prev) => ({ ...prev, estado: estadosPermitidos[0].value }));
+    }
+  }, [selectedRoom, estadosPermitidos, form.estado]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.numero) { addToast('Ingrese el número de habitación.', 'warning'); return; }
@@ -49,6 +89,7 @@ export default function Habitaciones() {
         form.numero,
         form.estado,
         auth.token,
+        form.observaciones,
       );
       setResult({ type: 'success', data, estado: form.estado, numero: form.numero });
       addToast(`Hab. ${form.numero} actualizada a "${form.estado}".`, 'success');
@@ -98,8 +139,8 @@ export default function Habitaciones() {
 
             <div className="form-group">
               <label className="form-label">Nuevo Estado</label>
-              <select className="form-select" value={form.estado} onChange={set('estado')} required>
-                {ESTADOS.map((e) => (
+              <select className="form-select" value={form.estado} onChange={set('estado')} required disabled={selectedRoom && estadosPermitidos.length === 0}>
+                {estadosPermitidos.map((e) => (
                   <option key={e.value} value={e.value}>{e.label}</option>
                 ))}
               </select>
@@ -111,6 +152,12 @@ export default function Habitaciones() {
                 <span className={`badge ${badgeCls}`}>
                   {ESTADOS.find((e) => e.value === form.estado)?.label}
                 </span>
+              </div>
+            )}
+
+            {selectedRoom && estadosPermitidos.length === 0 && (
+              <div className="alert alert-error">
+                No hay transiciones permitidas para su rol desde el estado actual "{selectedRoom.estado}".
               </div>
             )}
 
@@ -131,7 +178,7 @@ export default function Habitaciones() {
             )}
             {result?.type === 'error' && <div className="alert alert-error">{result.msg}</div>}
 
-            <button type="submit" className="btn btn-gold btn-full" disabled={loading}>
+            <button type="submit" className="btn btn-gold btn-full" disabled={loading || (selectedRoom && estadosPermitidos.length === 0)}>
               {loading ? 'Actualizando…' : 'Actualizar Estado'}
             </button>
           </form>
@@ -146,7 +193,6 @@ export default function Habitaciones() {
               { estado: 'disponible',    desc: 'La habitación está lista para recibir huéspedes.' },
               { estado: 'ocupada',       desc: 'Huésped activo. No asignar a nuevas reservas.' },
               { estado: 'limpieza',      desc: 'En proceso de limpieza o preparación.' },
-              { estado: 'sucia',         desc: 'Requiere limpieza antes de volver a estar disponible.' },
               { estado: 'mantenimiento', desc: 'Fuera de servicio por reparación o revisión técnica.' },
               { estado: 'bloqueada',     desc: 'Bloqueada administrativamente por gestión interna.' },
             ].map((e) => {

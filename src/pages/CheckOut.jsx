@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -9,10 +9,32 @@ export default function CheckOut() {
   const { addToast } = useToast();
 
   const [reservaId, setReservaId] = useState('');
+  const [tokenPago, setTokenPago] = useState('tok_visa_xxxx');
   const [preview, setPreview]     = useState(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
+  const [loadingReservas, setLoadingReservas] = useState(false);
+  const [reservasCheckout, setReservasCheckout] = useState([]);
   const [loading, setLoading]     = useState(false);
   const [result, setResult]       = useState(null);
+
+  const cargarReservasCheckout = useCallback(async () => {
+    if (!auth.token) return;
+    setLoadingReservas(true);
+    try {
+      const res = await api.reservas.listarParaCheckout(auth.token);
+      const data = Array.isArray(res) ? res : res?.data ?? [];
+      setReservasCheckout(data);
+    } catch (err) {
+      setReservasCheckout([]);
+      addToast(err.message || 'No se pudieron cargar las reservas para check-out.', 'error');
+    } finally {
+      setLoadingReservas(false);
+    }
+  }, [addToast, auth.token]);
+
+  useEffect(() => {
+    cargarReservasCheckout();
+  }, [cargarReservasCheckout]);
 
   const printCheckoutFactura = (data) => {
     const win = window.open('', '_blank', 'width=620,height=520');
@@ -79,11 +101,22 @@ export default function CheckOut() {
     setLoading(true);
     setResult(null);
     try {
-      const data = await api.checkout.registrar(reservaId, auth.token);
+      const saldo = preview?.resumen_factura?.saldo_cobrado ?? preview?.saldo_pendiente ?? null;
+      if (Number(saldo ?? 1) > 0 && !tokenPago.trim()) {
+        addToast('Ingrese un token de pago para cobrar el saldo pendiente.', 'warning');
+        setLoading(false);
+        return;
+      }
+      const payload = {
+        token_pago: Number(saldo ?? 1) > 0 ? tokenPago.trim() : undefined,
+      };
+      const data = await api.checkout.registrar(reservaId, auth.token, payload);
       setResult({ type: 'success', data });
       addToast('Check-out registrado y liquidación completada.', 'success');
       setPreview(null);
       setReservaId('');
+      setTokenPago('tok_visa_xxxx');
+      await cargarReservasCheckout();
     } catch (err) {
       setResult({ type: 'error', msg: err.message });
       addToast(err.message, 'error');
@@ -118,7 +151,7 @@ export default function CheckOut() {
         <p>Procese la salida del huésped y realice la liquidación final de la estadía</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: preview ? '1fr 1fr' : '1fr', gap: '1.5rem', maxWidth: preview ? 900 : 540 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '1.5rem', alignItems: 'start' }}>
         {/* ── Formulario ──────────────────────────── */}
         <div className="card">
           <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Procesar Salida</p>
@@ -148,6 +181,20 @@ export default function CheckOut() {
               <p style={{ fontSize: '0.72rem', color: 'var(--c-text-2)', marginTop: '0.35rem' }}>
                 Consulte el módulo de{' '}
                 <Link to="/dashboard/reservas" style={{ color: 'var(--c-gold)' }}>Reservas</Link> para encontrar el N° de reserva.
+              </p>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Token de pago para saldo pendiente</label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="Ej. tok_visa_xxxx"
+                value={tokenPago}
+                onChange={(e) => { setTokenPago(e.target.value); setResult(null); }}
+              />
+              <p style={{ fontSize: '0.72rem', color: 'var(--c-text-2)', marginTop: '0.35rem' }}>
+                Use un token válido para cobrar el saldo. Tokens con “rechazado” o “fail” simulan rechazo de la pasarela.
               </p>
             </div>
 
@@ -205,6 +252,78 @@ export default function CheckOut() {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', marginBottom: '0.8rem' }}>
+            <div>
+              <p className="eyebrow" style={{ marginBottom: '0.35rem' }}>Reservas en curso</p>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Listas para check-out</h2>
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={cargarReservasCheckout}
+              disabled={loadingReservas}
+            >
+              {loadingReservas ? 'Cargando…' : 'Actualizar'}
+            </button>
+          </div>
+
+          {loadingReservas ? (
+            <div style={{ padding: '1rem 0', color: 'var(--c-text-2)' }}>Cargando reservas en curso…</div>
+          ) : reservasCheckout.length === 0 ? (
+            <div className="alert alert-info">
+              No hay reservas en curso listas para check-out.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {reservasCheckout.map((reserva) => (
+                <div
+                  key={reserva.id_reserva}
+                  style={{
+                    border: '1px solid var(--c-border)',
+                    borderRadius: 'var(--r-md)',
+                    padding: '0.9rem',
+                    background: 'var(--c-surface-2)',
+                    display: 'grid',
+                    gap: '0.65rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                        Reserva #{reserva.id_reserva}
+                      </p>
+                      <p style={{ margin: '0.2rem 0 0', color: 'var(--c-text-2)', fontSize: '0.8rem' }}>
+                        {reserva.codigo_confirmacion || 'Sin código'} · Hab. {reserva.numero_habitacion ?? reserva.numero ?? 'N/D'}
+                      </p>
+                    </div>
+                    <span className="badge badge-success">En curso</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem', color: 'var(--c-text-2)', fontSize: '0.78rem' }}>
+                    <span>Huésped: {reserva.huesped_nombre || 'N/D'}</span>
+                    <span>Documento: {reserva.huesped_documento || 'N/D'}</span>
+                    <span>Entrada: {reserva.fecha_entrada || 'N/D'}</span>
+                    <span>Salida: {reserva.fecha_salida || 'N/D'}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-gold btn-sm"
+                    onClick={() => {
+                      setReservaId(String(reserva.id_reserva));
+                      setResult(null);
+                      setPreview(null);
+                    }}
+                  >
+                    Seleccionar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* ── Preview de liquidación ───────────────── */}

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
+import { isAdmin as hasAdminRole, isLimpieza } from '../utils/roles.js';
 
 const CRITICIDAD_CLASS = { critica: 'crit-critica', alta: 'crit-alta', normal: 'crit-normal' };
 const CRITICIDAD_LABEL = { critica: 'Crítica', alta: 'Alta', normal: 'Normal' };
@@ -35,7 +36,7 @@ const UNIDADES_MEDIDA = [
 export default function Inventario() {
   const { auth } = useAuth();
   const { addToast } = useToast();
-  const isAdmin = auth.rol === 'Administrador';
+  const isAdmin = hasAdminRole(auth.rol);
 
   const [tab, setTab] = useState(isAdmin ? 'insumos' : 'consumo');
 
@@ -166,7 +167,7 @@ export default function Inventario() {
       addToast('El ID de habitación es obligatorio para registrar consumo de inventario.', 'warning');
       return;
     }
-    if (!auth.id_personal && auth.rol !== 'PersonalLimpieza') {
+    if (!auth.id_personal && !isLimpieza(auth.rol)) {
       addToast('Solo personal de limpieza puede registrar consumos de inventario.', 'warning');
       return;
     }
@@ -641,20 +642,9 @@ export default function Inventario() {
           <div className="card">
             <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Registrar Nuevo Insumo</p>
             <span className="gold-line" />
-            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 0.25rem' }}>
-              Agrega un insumo nuevo al catálogo de inventario.
-              Requiere el endpoint{' '}
-              <code style={{ padding: '0.1rem 0.4rem', background: 'var(--c-surface-2)', borderRadius: 4, fontSize: '0.78rem' }}>
-                POST /inventario/insumos
-              </code>{' '}
-              en el backend.
+            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 1.25rem' }}>
+              Agrega un insumo nuevo al catálogo de inventario. Al guardar, quedará disponible en la lista de insumos y en los formularios de consumo.
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0 1.25rem', padding: '0.6rem 0.9rem', background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.25)', borderRadius: 8 }}>
-              <span style={{ fontSize: '1rem' }}>⚠️</span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
-                Endpoint pendiente de implementación. El formulario está listo para cuando esté disponible.
-              </span>
-            </div>
             <form onSubmit={handleNuevoInsumo} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Nombre del insumo *</label>
@@ -733,19 +723,9 @@ export default function Inventario() {
           <div className="card">
             <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Añadir Stock a Insumo</p>
             <span className="gold-line" />
-            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 0.25rem' }}>
-              Aumenta el stock de un insumo existente (reposición de bodega). Requiere el endpoint{' '}
-              <code style={{ padding: '0.1rem 0.4rem', background: 'var(--c-surface-2)', borderRadius: 4, fontSize: '0.78rem' }}>
-                PATCH /inventario/:id/stock
-              </code>{' '}
-              en el backend.
+            <p style={{ fontSize: '0.82rem', color: 'var(--c-text-2)', margin: '0.75rem 0 1.25rem' }}>
+              Aumenta el stock de un insumo existente por reposición de bodega.
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', margin: '0.5rem 0 1.25rem', padding: '0.6rem 0.9rem', background: 'rgba(255,200,0,0.07)', border: '1px solid rgba(255,200,0,0.25)', borderRadius: 8 }}>
-              <span style={{ fontSize: '1rem' }}>⚠️</span>
-              <span style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
-                Endpoint pendiente de implementación. El formulario está listo para cuando esté disponible.
-              </span>
-            </div>
             <form onSubmit={handleAgregarStock} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label">Insumo *</label>

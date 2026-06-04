@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
@@ -8,13 +8,33 @@ export default function CheckIn() {
   const { auth } = useAuth();
   const { addToast } = useToast();
 
-  // Backend actual: check-in solo por id de reserva
   const [modo, setModo] = useState('id');
   const [reservaId, setReservaId] = useState('');
   const [codigoConfirmacion, setCodigoConfirmacion] = useState('');
   const [form, setForm] = useState({ documento_verificado: true, observaciones: '' });
   const [loading, setLoading] = useState(false);
+  const [loadingReservas, setLoadingReservas] = useState(false);
+  const [reservasPendientes, setReservasPendientes] = useState([]);
   const [result, setResult] = useState(null);
+
+  const cargarReservasPendientes = useCallback(async () => {
+    if (!auth.token) return;
+    setLoadingReservas(true);
+    try {
+      const res = await api.reservas.listarParaCheckin(auth.token);
+      const data = Array.isArray(res) ? res : res?.data ?? [];
+      setReservasPendientes(data);
+    } catch (err) {
+      setReservasPendientes([]);
+      addToast(err.message || 'No se pudieron cargar las reservas pendientes.', 'error');
+    } finally {
+      setLoadingReservas(false);
+    }
+  }, [addToast, auth.token]);
+
+  useEffect(() => {
+    cargarReservasPendientes();
+  }, [cargarReservasPendientes]);
 
   const printCheckinVoucher = (data) => {
     const win = window.open('', '_blank', 'width=620,height=520');
@@ -77,6 +97,7 @@ export default function CheckIn() {
       setReservaId('');
       setCodigoConfirmacion('');
       setForm({ documento_verificado: true, observaciones: '' });
+      await cargarReservasPendientes();
     } catch (err) {
       setResult({ type: 'error', msg: err.message });
       addToast(err.message, 'error');
@@ -92,7 +113,7 @@ export default function CheckIn() {
         <p>Confirme la llegada del huésped y registre su entrada al hotel</p>
       </div>
 
-      <div style={{ maxWidth: 540 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '1.5rem', alignItems: 'start' }}>
         <div className="card">
           <p className="eyebrow" style={{ marginBottom: '0.5rem' }}>Datos del Check-In</p>
           <span className="gold-line" />
@@ -118,7 +139,7 @@ export default function CheckIn() {
           </div>
 
           <p style={{ fontSize: '0.72rem', color: 'var(--c-text-2)', marginBottom: '1rem' }}>
-            Puede ingresar el ID o el código de confirmación de la reserva.
+            Puede ingresar el ID o el código de confirmación de una reserva confirmada.
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -205,7 +226,16 @@ export default function CheckIn() {
                 ↓ Imprimir comprobante de check-in
               </button>
             )}
-            {result?.type === 'error' && <div className="alert alert-error">{result.msg}</div>}
+            {result?.type === 'error' && (
+              <div className="alert alert-error" style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                <span>{result.msg}</span>
+                {String(result.msg || '').toLowerCase().includes('check-in registrado') && (
+                  <Link to="/dashboard/checkout" className="btn btn-outline btn-sm" style={{ alignSelf: 'flex-start' }}>
+                    Ir a check-out
+                  </Link>
+                )}
+              </div>
+            )}
 
             <button type="submit" className="btn btn-gold btn-full" disabled={loading}>
               {loading ? 'Registrando…' : 'Registrar Check-In'}
@@ -213,7 +243,80 @@ export default function CheckIn() {
           </form>
         </div>
 
-        <div className="card-gold card" style={{ marginTop: '1.5rem' }}>
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', alignItems: 'center', marginBottom: '0.8rem' }}>
+            <div>
+              <p className="eyebrow" style={{ marginBottom: '0.35rem' }}>Reservas pendientes</p>
+              <h2 style={{ fontSize: '1.1rem', margin: 0 }}>Listas para check-in</h2>
+            </div>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={cargarReservasPendientes}
+              disabled={loadingReservas}
+            >
+              {loadingReservas ? 'Cargando…' : 'Actualizar'}
+            </button>
+          </div>
+
+          {loadingReservas ? (
+            <div style={{ padding: '1rem 0', color: 'var(--c-text-2)' }}>Cargando reservas confirmadas…</div>
+          ) : reservasPendientes.length === 0 ? (
+            <div className="alert alert-info">
+              No hay reservas confirmadas listas para check-in.
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.75rem' }}>
+              {reservasPendientes.map((reserva) => (
+                <div
+                  key={reserva.id_reserva}
+                  style={{
+                    border: '1px solid var(--c-border)',
+                    borderRadius: 'var(--r-md)',
+                    padding: '0.9rem',
+                    background: 'var(--c-surface-2)',
+                    display: 'grid',
+                    gap: '0.65rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>
+                        Reserva #{reserva.id_reserva}
+                      </p>
+                      <p style={{ margin: '0.2rem 0 0', color: 'var(--c-text-2)', fontSize: '0.8rem' }}>
+                        {reserva.codigo_confirmacion || 'Sin código'} · Hab. {reserva.numero_habitacion ?? reserva.numero ?? 'N/D'}
+                      </p>
+                    </div>
+                    <span className="badge badge-success">Confirmada</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.5rem', color: 'var(--c-text-2)', fontSize: '0.78rem' }}>
+                    <span>Huésped: {reserva.huesped_nombre || 'N/D'}</span>
+                    <span>Documento: {reserva.huesped_documento || 'N/D'}</span>
+                    <span>Entrada: {reserva.fecha_entrada || 'N/D'}</span>
+                    <span>Salida: {reserva.fecha_salida || 'N/D'}</span>
+                  </div>
+
+                  <button
+                    type="button"
+                    className="btn btn-gold btn-sm"
+                    onClick={() => {
+                      setModo('id');
+                      setReservaId(String(reserva.id_reserva));
+                      setCodigoConfirmacion('');
+                      setResult(null);
+                    }}
+                  >
+                    Seleccionar
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="card-gold card" style={{ gridColumn: '1 / -1' }}>
           <p style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--c-gold)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '0.75rem' }}>
             Checklist de Check-In
           </p>

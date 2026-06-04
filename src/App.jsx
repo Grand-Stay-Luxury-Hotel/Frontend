@@ -20,6 +20,7 @@ import Tarifas from './pages/Tarifas.jsx';
 import CuentaHuesped from './pages/CuentaHuesped.jsx';
 import Auditoria from './pages/Auditoria.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
+import { isAdmin, isLimpieza, isTecnico } from './utils/roles.js';
 
 const ROLES = {
   admin: ['Administrador'],
@@ -35,8 +36,8 @@ const TECNICO_ROLES = ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico
 function DashboardIndex() {
   const { auth } = useAuth();
   const rol = auth?.rol ?? '';
-  if (rol === 'Administrador') return <Navigate to="overview" replace />;
-  if (LIMPEZA_ROLES.includes(rol) || TECNICO_ROLES.includes(rol)) return <Navigate to="habitaciones" replace />;
+  if (isAdmin(rol)) return <Navigate to="overview" replace />;
+  if (isLimpieza(rol) || isTecnico(rol)) return <Navigate to="habitaciones" replace />;
   return <Navigate to="disponibilidad" replace />;
 }
 

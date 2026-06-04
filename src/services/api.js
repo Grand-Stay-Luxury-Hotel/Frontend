@@ -34,10 +34,13 @@ function normalizeData(res) {
   return res?.data ?? [];
 }
 
-async function getReservaByIdOrSearch(value, token) {
+async function getReservaByIdOrSearch(value, token, options = {}) {
   try {
-    const search = encodeURIComponent(String(value ?? '').trim());
-    const res = await request('GET', `/reservas?buscar=${search}&limite=20`, null, token);
+    const search = String(value ?? '').trim();
+    const params = new URLSearchParams({ buscar: search, limite: String(options.limite ?? 20) });
+    if (options.operacion) params.set('operacion', options.operacion);
+    if (options.estado) params.set('estado', options.estado);
+    const res = await request('GET', `/reservas?${params}`, null, token);
     const list = normalizeData(res);
     return list.find((r) => String(r.id_reserva) === String(value)) ?? list[0] ?? null;
   } catch {
@@ -70,18 +73,26 @@ async function request(method, path, body = null, token = null) {
   }
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${BASE}${path}`, {
-    method,
-    headers,
-    body: body !== null ? JSON.stringify(body) : undefined,
-  });
+  let res;
+  try {
+    res = await fetch(`${BASE}${path}`, {
+      method,
+      headers,
+      body: body !== null ? JSON.stringify(body) : undefined,
+    });
+  } catch {
+    throw new Error('No se pudo conectar con el backend. Verifique que el servidor este activo.');
+  }
 
   let data;
-  try { 
-    const text = await res.text();
-    data = text ? JSON.parse(text) : {}; 
-  } catch { 
-    data = {}; 
+  const text = await res.text();
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    const err = new Error('La API no devolvio JSON valido. Revise el proxy /api entre frontend y backend.');
+    err.status = res.status;
+    err.raw = text;
+    throw err;
   }
 
   if (!res.ok) {
@@ -156,7 +167,7 @@ export const api = {
         }
       }
     },
-    estadoPorNumero: async (numero, estado, token) => {
+    estadoPorNumero: async (numero, estado, token, observaciones = '') => {
       try {
         const res = await request('GET', '/habitaciones?limite=50', null, token);
         const habitaciones = normalizeData(res);
@@ -164,7 +175,7 @@ export const api = {
         if (!hab?.id_habitacion) {
           throw new Error(`No se encontró la habitación ${numero}`);
         }
-        return request('PATCH', `/habitaciones/${hab.id_habitacion}/estado`, { estado }, token);
+        return request('PATCH', `/habitaciones/${hab.id_habitacion}/estado`, { estado, observaciones }, token);
       } catch (err) {
         throw err;
       }
@@ -195,6 +206,20 @@ export const api = {
         return { data: [], total: 0 };
       }
     },
+    listarParaCheckin: async (token) => {
+      try {
+        return await request('GET', '/reservas?operacion=checkin&limite=50', null, token);
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
+    listarParaCheckout: async (token) => {
+      try {
+        return await request('GET', '/reservas?operacion=checkout&limite=50', null, token);
+      } catch {
+        return { data: [], total: 0 };
+      }
+    },
     crear:               (body, token)  => request('POST',   '/reservas', body, token),
     cancelar:            (id, token)    => request('DELETE', `/reservas/${id}`, null, token),
     buscarPorDocumento: async (doc, token) => {
@@ -218,16 +243,27 @@ export const api = {
   // ── Check-in ───────────────────────────────────────────────────────────────
   checkin: {
     registrar:        async (reservaId, body, token) => {
-      const reserva = await getReservaByIdOrSearch(reservaId, token);
+      const reserva = await getReservaByIdOrSearch(reservaId, token, { operacion: 'checkin' });
       if (!reserva?.id_reserva) {
-        throw new Error('No se encontró la reserva para registrar check-in.');
+        const encontrada = await getReservaByIdOrSearch(reservaId, token);
+        if (encontrada?.estado === 'en_curso' || encontrada?.id_checkin) {
+          throw new Error('La reserva ya tiene check-in registrado. Continúe con consumos o check-out.');
+        }
+        if (encontrada?.estado) {
+          throw new Error(`No se puede registrar check-in para una reserva en estado "${encontrada.estado}". Solo aplica para reservas confirmadas.`);
+        }
+        throw new Error('No se encontró una reserva confirmada para registrar check-in.');
       }
       return request('POST', `/checkin/${reserva.id_reserva}`, body, token);
     },
     registrarPorCodigo: async (codigo, token) => {
-      const reserva = await getReservaByIdOrSearch(codigo, token);
+      const reserva = await getReservaByIdOrSearch(codigo, token, { operacion: 'checkin' });
       if (!reserva?.id_reserva) {
-        throw new Error('No se encontró la reserva asociada al código de confirmación.');
+        const encontrada = await getReservaByIdOrSearch(codigo, token);
+        if (encontrada?.estado === 'en_curso' || encontrada?.id_checkin) {
+          throw new Error('La reserva ya tiene check-in registrado. Continúe con consumos o check-out.');
+        }
+        throw new Error('No se encontró una reserva confirmada asociada al código de confirmación.');
       }
       return request('POST', `/checkin/${reserva.id_reserva}`, { documento_verificado: true }, token);
     },
@@ -236,8 +272,17 @@ export const api = {
   // ── Check-out ──────────────────────────────────────────────────────────────
   checkout: {
     previo: async (reservaId, token) => {
-      const reserva = await getReservaByIdOrSearch(reservaId, token);
-      if (!reserva?.id_reserva) throw new Error('No se encontró la reserva para generar resumen previo.');
+      const reserva = await getReservaByIdOrSearch(reservaId, token, { operacion: 'checkout' });
+      if (!reserva?.id_reserva) {
+        const encontrada = await getReservaByIdOrSearch(reservaId, token);
+        if (encontrada?.estado === 'confirmada') {
+          throw new Error('La reserva todavia no tiene check-in registrado. Primero registre el check-in.');
+        }
+        if (encontrada?.estado) {
+          throw new Error(`No se puede registrar check-out para una reserva en estado "${encontrada.estado}". Solo aplica para reservas en curso.`);
+        }
+        throw new Error('No se encontro una reserva en curso para generar resumen previo.');
+      }
       // Fechas de la reserva ya buscada (siempre strings ISO desde la API de reservas)
       const fechaEntradaFallback = reserva.fecha_entrada ? String(reserva.fecha_entrada) : null;
       const fechaSalidaFallback  = reserva.fecha_salida  ? String(reserva.fecha_salida)  : null;
@@ -263,12 +308,19 @@ export const api = {
         };
       }
     },
-    registrar: async (reservaId, token) => {
-      const reserva = await getReservaByIdOrSearch(reservaId, token);
+    registrar: async (reservaId, token, body = {}) => {
+      const reserva = await getReservaByIdOrSearch(reservaId, token, { operacion: 'checkout' });
       if (!reserva?.id_reserva) {
-        throw new Error('No se encontró la reserva para registrar check-out.');
+        const encontrada = await getReservaByIdOrSearch(reservaId, token);
+        if (encontrada?.estado === 'confirmada') {
+          throw new Error('La reserva todavia no tiene check-in registrado. Primero registre el check-in.');
+        }
+        if (encontrada?.estado) {
+          throw new Error(`No se puede registrar check-out para una reserva en estado "${encontrada.estado}". Solo aplica para reservas en curso.`);
+        }
+        throw new Error('No se encontro una reserva en curso para registrar check-out.');
       }
-      return request('POST', `/checkout/${reserva.id_reserva}`, {}, token);
+      return request('POST', `/checkout/${reserva.id_reserva}`, body, token);
     },
   },
 
@@ -549,6 +601,13 @@ export const api = {
 
   // ── Auditoría (Administrador) ──────────────────────────────────────────────
   auditoria: {
+    filtros: async (token) => {
+      try {
+        return await request('GET', '/auditoria/filtros', null, token);
+      } catch {
+        return { acciones: ['INSERT', 'UPDATE', 'DELETE', 'LOGIN', 'LOGOUT', 'READ'], tablas: [], usuarios: [] };
+      }
+    },
     listar: async (params, token) => {
       try {
         const qs = params && Object.keys(params).length ? `?${new URLSearchParams(params)}` : '';

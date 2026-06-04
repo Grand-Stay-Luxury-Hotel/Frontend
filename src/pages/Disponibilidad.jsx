@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
 import GoldDatePicker from '../components/GoldDatePicker.jsx';
+import { isHuesped, isRecepcionista } from '../utils/roles.js';
 
 const ESTADO_COLORS = {
   disponible: 'badge-success',
@@ -41,7 +42,7 @@ export default function Disponibilidad() {
   const [searched, setSearched] = useState(false);
   const [accessDenied, setAccessDenied] = useState(false);
 
-  const canQuery = auth?.rol === 'Recepcionista' || auth?.rol === 'Huesped';
+  const canQuery = isRecepcionista(auth?.rol) || isHuesped(auth?.rol);
 
   const set = (field) => (e) => setFilters((f) => ({ ...f, [field]: e.target.value }));
 
@@ -68,7 +69,7 @@ export default function Disponibilidad() {
       // muestra solo habitaciones con esa capacidad exacta.
       if (filters.capacidad) {
         const cap = parseInt(filters.capacidad, 10);
-        habitaciones = habitaciones.filter((r) => r.capacidad_max === cap);
+        habitaciones = habitaciones.filter((r) => Number(r.capacidad_max ?? r.capacidad) >= cap);
       }
       setRooms(habitaciones);
     } catch (err) {
@@ -179,7 +180,7 @@ export default function Disponibilidad() {
                     <span className="room-result-type">{r.tipo_nombre}</span>
                     <span className="room-result-detail">Piso {r.piso} · Cap. {r.capacidad_max} personas</span>
                   </div>
-                  {(auth.rol === 'Recepcionista' || auth.rol === 'Administrador' || auth.rol === 'Huesped') && (
+                  {canQuery && (
                     <button
                       className="btn btn-outline btn-sm btn-full"
                       style={{ marginTop: '0.25rem' }}

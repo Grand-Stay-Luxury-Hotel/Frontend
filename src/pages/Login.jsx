@@ -15,12 +15,14 @@ export default function Login() {
   const [showOtp, setShowOtp] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [info, setInfo] = useState('');
 
   const set = (field) => (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setInfo('');
     setLoading(true);
     try {
       const data = await api.auth.login({
@@ -33,9 +35,15 @@ export default function Login() {
       navigate(redirect, { replace: true });
     } catch (err) {
       const msg = err?.message ?? 'Error al iniciar sesión';
-      if (msg.toLowerCase().includes('otp')) {
+      const lower = msg.toLowerCase();
+      if (lower.includes('otp') && !showOtp) {
         setShowOtp(true);
-        setError('');
+        setInfo('Ingrese el código OTP del administrador para completar el inicio de sesión.');
+        addToast('Se requiere código OTP para Administrador.', 'info');
+      } else if (lower.includes('otp')) {
+        setError('Código OTP incorrecto o vencido.');
+      } else if (err?.status === 401) {
+        setError('Correo o contraseña incorrectos.');
       } else {
         setError(msg);
       }
@@ -118,7 +126,7 @@ export default function Login() {
               </div>
               <button
                 type="button"
-                onClick={() => { setShowOtp(false); setError(''); setForm(f => ({ ...f, otp: '' })); }}
+                onClick={() => { setShowOtp(false); setError(''); setInfo(''); setForm(f => ({ ...f, otp: '' })); }}
                 style={{ background: 'none', color: 'var(--c-text-2)', fontSize: '0.78rem', cursor: 'pointer', textAlign: 'left', padding: 0, textDecoration: 'underline' }}
               >
                 ← Volver a credenciales
@@ -126,6 +134,7 @@ export default function Login() {
             </>
           )}
 
+          {info && <div className="alert alert-info">{info}</div>}
           {error && <div className="alert alert-error">{error}</div>}
 
           <button
