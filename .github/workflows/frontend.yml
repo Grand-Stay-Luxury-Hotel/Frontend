@@ -1,0 +1,71 @@
+name: CI/CD - Grand Stay Frontend
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  # Job 1: Install & Build
+  build:
+    name: Install and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout del repositorio
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Build de produccion
+        run: npm run build
+        env:
+          NODE_ENV: production
+
+      - name: Subir artefacto dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+          retention-days: 1
+
+  # Job 2: Deploy a Netlify
+  deploy:
+    name: Deploy a Netlify
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Descargar artefacto dist
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ github.sha }}
+          path: dist/
+
+      - name: Deploy a Netlify
+        id: netlify
+        uses: nwtgck/actions-netlify@v3.0
+        with:
+          publish-dir: './dist'
+          production-branch: main
+          production-deploy: true
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          deploy-message: 'Deploy #${{ github.run_number }} - ${{ github.actor }}'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 5
+
+      - name: Resumen del deploy
+        run: |
+          echo "## Deploy completado" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ steps.netlify.outputs.deploy-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Autor:** ${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
