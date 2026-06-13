@@ -1,12 +1,14 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider } from './context/AuthContext.jsx';
+import { AuthModalProvider } from './context/AuthModalContext.jsx';
 import { ToastProvider, useToast } from './components/Toast.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { useAuth } from './context/AuthContext.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Registro from './pages/Registro.jsx';
+import DisponibilidadPublica from './pages/DisponibilidadPublica.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Disponibilidad from './pages/Disponibilidad.jsx';
 import Reservas from './pages/Reservas.jsx';
@@ -20,18 +22,7 @@ import Tarifas from './pages/Tarifas.jsx';
 import CuentaHuesped from './pages/CuentaHuesped.jsx';
 import Auditoria from './pages/Auditoria.jsx';
 import DashboardAdmin from './pages/DashboardAdmin.jsx';
-import { isAdmin, isLimpieza, isTecnico } from './utils/roles.js';
-
-const ROLES = {
-  admin: ['Administrador'],
-  recepcionista: ['Recepcionista'],
-  limpieza: ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'],
-  tecnico: ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'],
-  huesped: ['Huesped', 'Huésped'],
-};
-
-const LIMPEZA_ROLES = ['PersonalLimpieza', 'Personal de Limpieza', 'Personal de limpieza', 'Personal Limpieza', 'Limpieza'];
-const TECNICO_ROLES = ['ServicioTecnico', 'Servicio Tecnico', 'Servicio técnico', 'Servicio tecnico', 'Servicio Técnico'];
+import { isAdmin, isLimpieza, isTecnico, ROLES } from './utils/roles.js';
 
 function DashboardIndex() {
   const { auth } = useAuth();
@@ -62,10 +53,12 @@ export default function App() {
             v7_relativeSplatPath: true,
           }}
         >
+          <AuthModalProvider>
           <Routes>
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
+            <Route path="/disponibilidad" element={<DisponibilidadPublica />} />
             <Route
               path="/dashboard"
               element={
@@ -174,6 +167,7 @@ export default function App() {
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
+          </AuthModalProvider>
         </BrowserRouter>
       </ToastProvider>
     </AuthProvider>
