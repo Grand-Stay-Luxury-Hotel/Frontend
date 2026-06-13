@@ -41,6 +41,7 @@ jobs:
     name: Deploy a Netlify
     needs: build
     runs-on: ubuntu-latest
+    environment: NETLIFY_SITE_ID
 
     steps:
       - name: Descargar artefacto dist
@@ -57,6 +58,7 @@ jobs:
           production-branch: main
           production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          fails-without-credentials: true
           deploy-message: 'Deploy #${{ github.run_number }} - ${{ github.actor }}'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
