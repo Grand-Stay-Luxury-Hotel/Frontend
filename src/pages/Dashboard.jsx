@@ -10,6 +10,7 @@ const PAGE_TITLES = {
   habitaciones:   'Estado de Habitaciones',
   inventario:     'Inventario',
   reportes:       'Reportes Estadísticos',
+  integrantes:    'Integrantes',
 };
 
 export default function Dashboard() {

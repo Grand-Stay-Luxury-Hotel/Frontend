@@ -120,6 +120,15 @@ export const api = {
     verificarOTP:(_body)       => unsupportedEndpoint('La version actual del backend valida OTP dentro de /auth/login.'),
   },
 
+  integrantes: {
+    listar:         ()            => request('GET',  '/integrantes'),
+    registrar:      (body)        => request('POST', '/integrantes', body),
+    codigos:        (token)       => request('GET',  '/integrantes/codigos', null, token),
+    generarCodigo:  (token)       => request('POST', '/integrantes/codigos', {}, token),
+    codigo:         (id)          => request('GET',  `/integrantes/${encodeURIComponent(id)}/codigo`),
+    validar:        (body)        => request('POST', '/integrantes/validar', body),
+  },
+
   // ── Tipos de habitación (público) ──────────────────────────────────────────
   habitacionesTipos: {
     listar: async (token = null) => {

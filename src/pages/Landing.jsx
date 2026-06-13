@@ -153,12 +153,13 @@ export default function Landing() {
               ["Habitaciones", "rooms"],
               ["Experiencia", "experience"],
               ["Precios", "pricing"],
+              ["Integrantes", "/integrantes"],
             ].map(([l, id]) => (
               <li key={id}>
                 <button
                   className="nav-link"
                   style={{ background: "none", cursor: "pointer" }}
-                  onClick={() => scrollTo(id)}
+                  onClick={() => id.startsWith("/") ? navigate(id) : scrollTo(id)}
                 >
                   {l}
                 </button>
@@ -544,12 +545,13 @@ export default function Landing() {
                   ["Habitaciones", "rooms"],
                   ["Experiencia", "experience"],
                   ["Precios", "pricing"],
+                  ["Integrantes", "/integrantes"],
                 ].map(([l, id]) => (
                   <li key={id}>
                     <button
                       type="button"
                       className="footer-link"
-                      onClick={() => scrollTo(id)}
+                      onClick={() => id.startsWith("/") ? navigate(id) : scrollTo(id)}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0, font: "inherit" }}
                     >
                       {l}

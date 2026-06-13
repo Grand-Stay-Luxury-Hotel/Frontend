@@ -8,6 +8,8 @@ import { useAuth } from './context/AuthContext.jsx';
 import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Registro from './pages/Registro.jsx';
+import Integrantes from './pages/Integrantes.jsx';
+import IntegrantesAdmin from './pages/IntegrantesAdmin.jsx';
 import DisponibilidadPublica from './pages/DisponibilidadPublica.jsx';
 import Dashboard from './pages/Dashboard.jsx';
 import Disponibilidad from './pages/Disponibilidad.jsx';
@@ -58,6 +60,7 @@ export default function App() {
             <Route path="/" element={<Landing />} />
             <Route path="/login" element={<Login />} />
             <Route path="/registro" element={<Registro />} />
+            <Route path="/integrantes" element={<Integrantes />} />
             <Route path="/disponibilidad" element={<DisponibilidadPublica />} />
             <Route
               path="/dashboard"
@@ -161,6 +164,14 @@ export default function App() {
                 element={
                   <ProtectedRoute roles={ROLES.admin}>
                     <Auditoria />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="integrantes"
+                element={
+                  <ProtectedRoute roles={ROLES.admin}>
+                    <IntegrantesAdmin />
                   </ProtectedRoute>
                 }
               />
