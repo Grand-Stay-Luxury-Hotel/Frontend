@@ -1,8 +1,35 @@
+## Dependencias
 node_modules
+npm-debug.log*
+
+## Build anterior (Docker la genera fresca)
 dist
 build
+
+## Secrets y entorno local
 .env
+.env.*
+!.env.example
+
+## Git
 .git
-npm-debug.log
+.gitignore
+.gitattributes
+
+## Docker (no necesita copiarse a sí mismo)
 Dockerfile
 docker-compose*.yml
+.dockerignore
+
+## Documentación y scripts de desarrollo
+docs
+*.md
+!README.md
+*.ps1
+*.sh
+
+## IDE y SO
+.vscode
+.idea
+*.DS_Store
+Thumbs.db

@@ -2,9 +2,14 @@
 
 # Stage 1: Build the Vite app
 FROM node:20-alpine AS builder
+
+LABEL maintainer="Grand Stay Dev Team"
+LABEL description="Grand Stay Hotels - Frontend React/Vite"
+LABEL version="1.0.0"
+
 WORKDIR /app
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --ignore-scripts
 COPY . .
 RUN npm run build
 
