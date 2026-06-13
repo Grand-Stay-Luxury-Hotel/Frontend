@@ -15,6 +15,7 @@ import {
   IconTag,
   IconShield,
   IconUser,
+  IconUsers,
   IconGrid,
 } from './icons/index.jsx';
 
@@ -103,6 +104,7 @@ export default function Sidebar() {
       items: [
         { to: '/dashboard/reportes', label: 'Reportes', icon: <IconChart />, roles: ROLES.admin },
         { to: '/dashboard/tarifas', label: 'Tarifas', icon: <IconTag />, roles: ROLES.admin },
+        { to: '/dashboard/integrantes', label: 'Integrantes', icon: <IconUsers />, roles: ROLES.admin },
         { to: '/dashboard/auditoria', label: 'Auditoría', icon: <IconShield />, roles: ROLES.admin },
       ]
     },
