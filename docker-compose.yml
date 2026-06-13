@@ -16,6 +16,8 @@ services:
       retries: 3
       start_period: 5s
 
+# Para desarrollo local standalone.
+# Para producción usar el docker-compose.yml de la raíz del proyecto.
 networks:
   grandstay-net:
     driver: bridge
