@@ -2,14 +2,7 @@
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
-
-const ESTADOS = [
-  { value: 'disponible',    label: 'Disponible',    badge: 'badge-success' },
-  { value: 'ocupada',       label: 'Ocupada',        badge: 'badge-error'   },
-  { value: 'limpieza',      label: 'En Limpieza',    badge: 'badge-warning' },
-  { value: 'mantenimiento', label: 'Mantenimiento',  badge: 'badge-info'    },
-  { value: 'bloqueada',     label: 'Bloqueada',      badge: 'badge-gold'    },
-];
+import { ESTADOS_HABITACION as ESTADOS } from '../utils/estados.js';
 
 const TRANSICIONES = {
   disponible: ['ocupada', 'mantenimiento', 'bloqueada'],
