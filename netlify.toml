@@ -1,0 +1,19 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Proxy de API al backend en Render
+[[redirects]]
+  from = "/api/*"
+  to = "https://grand-stay-backend.onrender.com/:splat"
+  status = 200
+  force = true
+
+# Fallback SPA para React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

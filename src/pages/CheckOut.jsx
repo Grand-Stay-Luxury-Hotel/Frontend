@@ -127,19 +127,36 @@ export default function CheckOut() {
 
   const fmt = (n) => Number(n || 0).toLocaleString('es-CO', { minimumFractionDigits: 2 });
 
-  const parseDateSafe = (d) => {
-    if (!d) return null;
-    // Normalize to YYYY-MM-DD to avoid UTC offset issues with MySQL datetime strings
-    const str = typeof d === 'string' ? d : new Date(d).toISOString();
+  const parseDateSafe = (valor) => {
+    if (!valor) return null;
+
+    if (valor instanceof Date) {
+      if (isNaN(valor.getTime())) return null;
+      return new Date(Date.UTC(valor.getUTCFullYear(), valor.getUTCMonth(), valor.getUTCDate()));
+    }
+
+    const str = String(valor).trim();
     const match = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if (!match) return null;
-    const date = new Date(Date.UTC(Number(match[1]), Number(match[2]) - 1, Number(match[3])));
-    return isNaN(date.getTime()) ? null : date;
+    if (match) {
+      const [, y, m, d] = match;
+      return new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+    }
+
+    const parsed = new Date(str);
+    if (isNaN(parsed.getTime())) return null;
+    return new Date(Date.UTC(parsed.getUTCFullYear(), parsed.getUTCMonth(), parsed.getUTCDate()));
+  };
+
+  const calcularNoches = (entrada, salida) => {
+    if (!entrada || !salida) return 0;
+    const diff = salida - entrada;
+    if (diff <= 0) return 0;
+    return Math.round(diff / (1000 * 60 * 60 * 24));
   };
 
   const dateEntrada = preview ? parseDateSafe(preview.fecha_entrada) : null;
   const dateSalida = preview ? parseDateSafe(preview.fecha_salida) : null;
-  const nights = (dateEntrada && dateSalida) ? Math.ceil((dateSalida - dateEntrada) / (1000 * 60 * 60 * 24)) : 0;
+  const nights = calcularNoches(dateEntrada, dateSalida);
   const nightsTotal = preview?.resumen_factura?.tarifa_base;
   const ratePerNight = nights > 0 && nightsTotal !== undefined ? (nightsTotal / nights) : undefined;
   const advancePaid = preview?.resumen_factura?.anticipo_pagado;
