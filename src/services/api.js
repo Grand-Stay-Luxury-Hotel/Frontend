@@ -1,4 +1,12 @@
-const BASE = '/api';
+const DEFAULT_PROD_API_BASE = 'https://grand-stay-backend.onrender.com';
+
+function normalizeBaseUrl(value) {
+  return String(value ?? '').trim().replace(/\/+$/, '');
+}
+
+const BASE = import.meta.env.DEV
+  ? '/api'
+  : normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL || DEFAULT_PROD_API_BASE);
 
 const SERVICIOS_COMPAT = [
   { id_servicio: 1, nombre: 'Masaje relajante 60 min', categoria: 'spa', precio: 120000 },
