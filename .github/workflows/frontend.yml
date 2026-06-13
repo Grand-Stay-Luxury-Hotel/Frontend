@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
 
 jobs:
   # Job 1: Install & Build
@@ -42,6 +45,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     environment: NETLIFY_SITE_ID
+    if: github.event_name == 'push'
 
     steps:
       - name: Descargar artefacto dist
@@ -59,6 +63,10 @@ jobs:
           production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
           fails-without-credentials: true
+          enable-pull-request-comment: false
+          enable-commit-comment: false
+          enable-commit-status: false
+          enable-github-deployment: false
           deploy-message: 'Deploy #${{ github.run_number }} - ${{ github.actor }}'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
