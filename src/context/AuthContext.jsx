@@ -58,6 +58,7 @@ export function AuthProvider({ children }) {
     clearTimeout(idleTimer.current);
     if (authRef.current) {
       idleTimer.current = setTimeout(() => {
+        sessionStorage.setItem('gs_intentional_logout', '1');
         window.dispatchEvent(new CustomEvent('gs:idleLogout'));
         sessionStorage.removeItem('gs_auth');
         setAuth(null);
