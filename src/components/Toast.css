@@ -1,0 +1,129 @@
+/* ─── TOAST CONTAINER ────────────────────────────────────────── */
+.gs-toast-container {
+  position: fixed;
+  top: 1.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+  max-width: 92vw;
+}
+
+/* ─── TOAST INDIVIDUAL ───────────────────────────────────────── */
+.gs-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 280px;
+  max-width: 440px;
+  padding: 0.7rem 0.85rem 0.7rem 1rem;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-gold-border);
+  border-radius: var(--r-md);
+  box-shadow:
+    0 12px 32px -8px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(201, 169, 110, 0.05),
+    0 0 30px -12px rgba(201, 169, 110, 0.18);
+  font-size: 0.82rem;
+  color: var(--c-text);
+  animation: gs-toast-in 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.gs-toast--leaving {
+  animation: gs-toast-out 0.22s ease forwards;
+}
+
+@keyframes gs-toast-in {
+  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)     scale(1); }
+}
+
+@keyframes gs-toast-out {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-6px); }
+}
+
+/* ─── ICON ───────────────────────────────────────────────────── */
+.gs-toast-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  color: var(--c-gold);
+}
+
+.gs-toast-msg {
+  flex: 1;
+  line-height: 1.45;
+  font-weight: 400;
+  letter-spacing: 0.005em;
+}
+
+/* ─── CLOSE BUTTON ──────────────────────────────────────────── */
+.gs-toast-close {
+  flex-shrink: 0;
+  background: transparent;
+  border: none;
+  color: var(--c-text-3);
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.gs-toast-close:hover {
+  color: var(--c-gold);
+  background: var(--c-gold-bg);
+}
+
+/* ─── VARIANTES POR TIPO ────────────────────────────────────── */
+/* Todas comparten estética dorada base — solo cambia el acento del icono */
+
+.gs-toast--success .gs-toast-icon {
+  color: #9fd9b8;
+  background: rgba(159, 217, 184, 0.12);
+}
+
+.gs-toast--error {
+  border-color: rgba(220, 130, 130, 0.45);
+}
+.gs-toast--error .gs-toast-icon {
+  color: #e9a3a3;
+  background: rgba(233, 163, 163, 0.12);
+}
+
+.gs-toast--warning .gs-toast-icon {
+  color: var(--c-gold-light);
+  background: var(--c-gold-bg);
+}
+
+.gs-toast--info .gs-toast-icon {
+  color: var(--c-gold);
+  background: var(--c-gold-bg);
+}
+
+/* ─── MOBILE ────────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .gs-toast-container {
+    top: 0.75rem;
+    width: calc(100% - 1.5rem);
+    max-width: none;
+  }
+  .gs-toast {
+    min-width: 0;
+    width: 100%;
+    font-size: 0.78rem;
+  }
+}

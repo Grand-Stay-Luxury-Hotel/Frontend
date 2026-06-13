@@ -1,18 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
 import { calcularPenalizacion } from '../utils/penalizacion.js';
+import { calcularCotizacion } from '../utils/calcularCotizacion.js';
+import { ROOM } from '../utils/rooms.js';
+import { formatCOP, calcularNoches } from '../utils/format.js';
 import GoldDatePicker from '../components/GoldDatePicker.jsx';
 import { isAdmin, isHuesped as hasHuespedRole, isRecepcionista } from '../utils/roles.js';
-
-const ESTADOS_ACTIVOS = ['pendiente', 'confirmada', 'en_curso'];
-const ESTADO_BADGE = {
-  pendiente: 'badge-warning',
-  confirmada: 'badge-info',
-  en_curso: 'badge-success',
-};
+import { badgeReserva, ESTADOS_RESERVA_ACTIVOS as ESTADOS_ACTIVOS } from '../utils/estados.js';
 
 function Modal({ title, onClose, children }) {
   return (
@@ -20,7 +17,7 @@ function Modal({ title, onClose, children }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{title}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar">âœ•</button>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
         {children}
       </div>
@@ -33,9 +30,34 @@ export default function Reservas() {
   const { addToast } = useToast();
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const prefill = location.state ?? {};
 
   const today = new Date().toISOString().split('T')[0];
+
+  /* Query params del cotizador (Landing/Disponibilidad pública) */
+  const qpFechaEntrada = searchParams.get('fechaEntrada') || '';
+  const qpFechaSalida  = searchParams.get('fechaSalida')  || '';
+  const qpTipo         = searchParams.get('tipo')         || '';
+  const qpAdultos      = parseInt(searchParams.get('adultos') || '0', 10);
+  const qpNinos        = parseInt(searchParams.get('ninos')   || '0', 10);
+  const vieneDeCotizador = Boolean(qpTipo || qpFechaEntrada);
+
+  /* Tipo solicitado desde el cotizador */
+  const tipoSolicitado = useMemo(
+    () => (qpTipo ? ROOM.find((r) => r.nombre === qpTipo) ?? null : null),
+    [qpTipo]
+  );
+
+  /* Cotización estimada (mismo cálculo que la Landing) */
+  const cotizacionEstimada = useMemo(
+    () => calcularCotizacion({
+      roomData:     tipoSolicitado,
+      fechaEntrada: qpFechaEntrada,
+      fechaSalida:  qpFechaSalida,
+    }),
+    [tipoSolicitado, qpFechaEntrada, qpFechaSalida]
+  );
 
   // Habitaciones disponibles del backend
   const [habitaciones, setHabitaciones] = useState([]);
@@ -47,11 +69,11 @@ export default function Reservas() {
   const [form, setForm] = useState({
     id_huesped:     auth.id_huesped ?? '',
     id_habitacion:  prefill.room?.id_habitacion ?? '',
-    fecha_entrada:  prefill.fechaEntrada ?? today,
-    fecha_salida:   prefill.fechaSalida  ?? '',
-    monto_anticipo: '',
+    fecha_entrada:  prefill.fechaEntrada ?? qpFechaEntrada ?? today,
+    fecha_salida:   prefill.fechaSalida  ?? qpFechaSalida  ?? '',
+    monto_anticipo: cotizacionEstimada ? String(Math.round(cotizacionEstimada.total * 0.30)) : '',
     token_pago:     '',
-    observaciones:  '',
+    observaciones:  qpTipo ? `Habitación solicitada: ${qpTipo}${qpAdultos ? ` · ${qpAdultos} adulto${qpAdultos !== 1 ? 's' : ''}` : ''}${qpNinos ? `, ${qpNinos} niño${qpNinos !== 1 ? 's' : ''}` : ''}` : '',
   });
   const [loading, setLoading] = useState(false);
   const [result, setResult]   = useState(null);
@@ -217,6 +239,48 @@ export default function Reservas() {
                 Habitación preseleccionada: <strong>N&#186; {prefill.room.numero_habitacion} — {prefill.room.tipo_nombre}</strong>
               </div>
             )}
+            {vieneDeCotizador && !prefill.room && tipoSolicitado && (
+              <div
+                className="card-gold"
+                style={{
+                  padding: '1rem 1.15rem',
+                  borderRadius: 'var(--r-sm)',
+                  marginBottom: '1.25rem',
+                  display: 'flex',
+                  gap: '1rem',
+                  alignItems: 'center',
+                }}
+              >
+                <img
+                  src={tipoSolicitado.imagen_url_optimizada}
+                  alt={tipoSolicitado.nombre}
+                  style={{ width: 72, height: 72, objectFit: 'cover', borderRadius: 'var(--r-sm)', flexShrink: 0 }}
+                />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontSize: '0.65rem', color: 'var(--c-gold)', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '0.25rem' }}>
+                    Cotización del sitio web
+                  </p>
+                  <p style={{ fontFamily: 'var(--f-heading)', fontSize: '1rem', color: 'var(--c-text)', marginBottom: '0.15rem' }}>
+                    {tipoSolicitado.nombre}
+                  </p>
+                  {cotizacionEstimada ? (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
+                      {cotizacionEstimada.noches} noche{cotizacionEstimada.noches !== 1 ? 's' : ''}
+                      {' · '}
+                      Total estimado:{' '}
+                      <strong style={{ color: 'var(--c-gold-light)' }}>{formatCOP(cotizacionEstimada.total)}</strong>
+                    </p>
+                  ) : (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--c-text-2)' }}>
+                      Complete las fechas para confirmar el cálculo final
+                    </p>
+                  )}
+                  <p style={{ fontSize: '0.7rem', color: 'var(--c-text-3)', marginTop: '0.3rem' }}>
+                    Seleccioná la habitación física disponible que corresponda a este tipo.
+                  </p>
+                </div>
+              </div>
+            )}
             <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               {/* Huésped */}
               <div className="form-group">
@@ -263,12 +327,37 @@ export default function Reservas() {
                   />
                 ) : (
                   <select className="form-select" value={form.id_habitacion} onChange={set('id_habitacion')} required>
-                    <option value="">— Seleccione la habitación —</option>
-                    {habitaciones.map((h) => (
-                      <option key={h.id_habitacion} value={h.id_habitacion}>
-                        Hab. {h.numero} · {h.tipo_nombre} · Piso {h.piso}
-                      </option>
-                    ))}
+                    {(() => {
+                      // Filtra por tipo solicitado (si viene del cotizador) y por estado disponible
+                      const habitacionesFiltradas = habitaciones.filter((h) => {
+                        const okEstado = !h.estado || String(h.estado).toLowerCase() === 'disponible';
+                        const okTipo   = !qpTipo || String(h.tipo_nombre ?? '').toLowerCase() === qpTipo.toLowerCase();
+                        return okEstado && okTipo;
+                      });
+                      if (habitacionesFiltradas.length === 0) {
+                        return (
+                          <option value="" disabled>
+                            {qpTipo
+                              ? `No hay habitaciones "${qpTipo}" disponibles para esas fechas`
+                              : 'Sin habitaciones disponibles'}
+                          </option>
+                        );
+                      }
+                      return (
+                        <>
+                          <option value="">
+                            {qpTipo
+                              ? `— Elegir habitación ${qpTipo} disponible —`
+                              : '— Seleccione la habitación —'}
+                          </option>
+                          {habitacionesFiltradas.map((h) => (
+                            <option key={h.id_habitacion} value={h.id_habitacion}>
+                              Hab. {h.numero} · {h.tipo_nombre} · Piso {h.piso}
+                            </option>
+                          ))}
+                        </>
+                      );
+                    })()}
                   </select>
                 )}
               </div>
@@ -446,7 +535,7 @@ export default function Reservas() {
                         <td>{reserva.fecha_entrada ?? '—'}</td>
                         <td>{reserva.fecha_salida ?? '—'}</td>
                         <td>
-                          <span className={`badge ${ESTADO_BADGE[estado] ?? 'badge-gold'}`}>
+                          <span className={`badge ${badgeReserva(estado)}`}>
                             {estado || '—'}
                           </span>
                         </td>

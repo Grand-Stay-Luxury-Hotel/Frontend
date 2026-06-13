@@ -5,22 +5,7 @@ import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
 import GoldDatePicker from '../components/GoldDatePicker.jsx';
 import { isHuesped, isRecepcionista } from '../utils/roles.js';
-
-const ESTADO_COLORS = {
-  disponible: 'badge-success',
-  ocupada:    'badge-error',
-  limpieza:   'badge-warning',
-  mantenimiento: 'badge-info',
-  bloqueada:  'badge-info',
-};
-
-const ESTADO_LABELS = {
-  disponible: 'Disponible',
-  ocupada:    'Ocupada',
-  limpieza:   'Limpieza',
-  mantenimiento: 'Mantenimiento',
-  bloqueada:  'Bloqueada',
-};
+import { badgeHabitacion, labelHabitacion } from '../utils/estados.js';
 
 export default function Disponibilidad() {
   const { auth } = useAuth();
@@ -172,8 +157,8 @@ export default function Disponibilidad() {
                 <div key={r.id_habitacion} className="room-result-card">
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <span className="room-result-number">Hab. {r.numero_habitacion}</span>
-                    <span className={`badge ${ESTADO_COLORS[r.estado] ?? 'badge-info'}`}>
-                      {ESTADO_LABELS[r.estado] ?? r.estado}
+                    <span className={`badge ${badgeHabitacion(r.estado)}`}>
+                      {labelHabitacion(r.estado)}
                     </span>
                   </div>
                   <div className="room-result-meta">

@@ -1,0 +1,162 @@
+/* ─── GUEST SELECTOR ─────────────────────────────────────────── */
+
+/* Wrapper relativo para anclar el panel absoluto */
+.gs-sel {
+  position: relative;
+  width: 100%;
+}
+
+/* Botón trigger — hereda .booking-input del widget,
+   agregamos flex para alinear label + chevron */
+.gs-sel-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gs-sel-btn:focus {
+  border-color: var(--c-gold);
+  box-shadow: 0 0 0 3px rgba(201, 169, 110, 0.1);
+  outline: none;
+}
+
+/* Estado de capacidad superada */
+.gs-sel-btn--warn {
+  border-color: var(--c-warning) !important;
+}
+
+.gs-sel-label {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.875rem;
+  color: var(--c-text);
+}
+
+.gs-sel-chevron {
+  flex-shrink: 0;
+  color: var(--c-gold-dark);
+  transition: transform var(--t), color var(--t);
+  display: flex;
+}
+
+.gs-sel-chevron.open {
+  transform: rotate(180deg);
+  color: var(--c-gold);
+}
+
+/* ─── PANEL (abre hacia arriba) ──────────────────────────────── */
+.gs-sel-panel {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  min-width: 200px;
+  z-index: 20;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-gold-border);
+  border-radius: var(--r-md);
+  padding: 0.6rem 0.9rem;
+  box-shadow: var(--shadow-md);
+  animation: gsSel-open 0.18s ease;
+}
+
+@keyframes gsSel-open {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ─── FILA DE CONTADOR ───────────────────────────────────────── */
+.gs-sel-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+}
+
+.gs-sel-row + .gs-sel-row {
+  border-top: 1px solid var(--c-border);
+}
+
+.gs-sel-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.gs-sel-row-label > span:first-child {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--c-text);
+}
+
+.gs-sel-hint {
+  font-size: 0.65rem;
+  color: var(--c-text-3);
+  letter-spacing: 0.02em;
+}
+
+.gs-sel-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-shrink: 0;
+}
+
+.gs-sel-counter-btn {
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--c-gold-border);
+  border-radius: 50%;
+  color: var(--c-gold);
+  font-size: 1.05rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--t), border-color var(--t), color var(--t);
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.gs-sel-counter-btn:hover:not(:disabled) {
+  background: var(--c-gold-bg);
+  border-color: var(--c-gold);
+}
+
+.gs-sel-counter-btn:disabled {
+  opacity: 0.28;
+  cursor: not-allowed;
+}
+
+.gs-sel-count {
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--c-text);
+  min-width: 1.1rem;
+  text-align: center;
+}
+
+/* ─── AVISO DE CAPACIDAD ─────────────────────────────────────── */
+.gs-sel-warn {
+  margin-top: 0.45rem;
+  padding-top: 0.45rem;
+  border-top: 1px solid var(--c-border);
+  font-size: 0.65rem;
+  color: var(--c-warning);
+  letter-spacing: 0.03em;
+  text-align: center;
+}

@@ -2,15 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { api } from '../services/api.js';
-
-const ESTADO_CLASS = {
-  confirmada:  'badge-success',
-  pendiente:   'badge-warning',
-  cancelada:   'badge-error',
-  completada:  'badge-info',
-  checkin:     'badge-gold',
-  checkout:    'badge-info',
-};
+import { badgeReserva } from '../utils/estados.js';
+import { formatCOP, formatDateShort } from '../utils/format.js';
 
 export default function CuentaHuesped() {
   const { auth } = useAuth();
@@ -26,9 +19,6 @@ export default function CuentaHuesped() {
       .catch((err) => addToast(err.message, 'error'))
       .finally(() => setLoading(false));
   }, [auth.token, addToast]);
-
-  const fmt = (n) => Number(n || 0).toLocaleString('es-CO', { maximumFractionDigits: 0 });
-  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('es-CO') : '—';
 
   const TABS = [
     { id: 'reservas',  label: 'Mis Reservas' },
@@ -85,7 +75,7 @@ export default function CuentaHuesped() {
             {[
               { label: 'Reservas totales', value: resumen.total_reservas ?? reservas.length },
               { label: 'Noches hospedado', value: resumen.total_noches ?? '—' },
-              { label: 'Total gastado', value: resumen.total_gastado != null ? `$${fmt(resumen.total_gastado)}` : '—' },
+              { label: 'Total gastado', value: resumen.total_gastado != null ? formatCOP(resumen.total_gastado) : '—' },
             ].map((k) => (
               <div key={k.label} style={{ textAlign: 'center', minWidth: 100 }}>
                 <p style={{ fontSize: '1.35rem', fontFamily: 'var(--f-heading)', color: 'var(--c-gold)', fontWeight: 700 }}>{k.value}</p>
@@ -139,14 +129,14 @@ export default function CuentaHuesped() {
                       <td>#{r.id_reserva}</td>
                       <td>{r.numero_habitacion ?? '—'}</td>
                       <td>{r.tipo_habitacion ?? r.tipo ?? '—'}</td>
-                      <td>{fmtDate(r.fecha_inicio ?? r.fecha_entrada)}</td>
-                      <td>{fmtDate(r.fecha_fin ?? r.fecha_salida)}</td>
+                      <td>{formatDateShort(r.fecha_inicio ?? r.fecha_entrada)}</td>
+                      <td>{formatDateShort(r.fecha_fin ?? r.fecha_salida)}</td>
                       <td>
-                        <span className={`badge ${ESTADO_CLASS[r.estado] ?? 'badge-info'}`}>
+                        <span className={`badge ${badgeReserva(r.estado)}`}>
                           {r.estado}
                         </span>
                       </td>
-                      <td>${fmt(r.precio_total ?? r.total)}</td>
+                      <td>{formatCOP(r.precio_total ?? r.total)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -174,11 +164,11 @@ export default function CuentaHuesped() {
                 <tbody>
                   {consumos.map((c, i) => (
                     <tr key={i}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(c.fecha)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDateShort(c.fecha)}</td>
                       <td>#{c.id_reserva}</td>
                       <td style={{ color: 'var(--c-text)', fontWeight: 500 }}>{c.nombre_servicio ?? c.descripcion}</td>
                       <td>{c.cantidad}</td>
-                      <td>${fmt(c.precio_total ?? c.subtotal)}</td>
+                      <td>{formatCOP(c.precio_total ?? c.subtotal)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -208,11 +198,11 @@ export default function CuentaHuesped() {
                     <tr key={i}>
                       <td style={{ color: 'var(--c-gold)', fontWeight: 500 }}>{f.codigo_factura ?? f.id_factura}</td>
                       <td>#{f.id_reserva}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{fmtDate(f.fecha_emision ?? f.fecha)}</td>
-                      <td>${fmt(f.total_facturado ?? f.total)}</td>
+                      <td style={{ whiteSpace: 'nowrap' }}>{formatDateShort(f.fecha_emision ?? f.fecha)}</td>
+                      <td>{formatCOP(f.total_facturado ?? f.total)}</td>
                       <td>
                         {f.saldo_pendiente != null
-                          ? <span className={`badge ${Number(f.saldo_pendiente) > 0 ? 'badge-warning' : 'badge-success'}`}>${fmt(f.saldo_pendiente)}</span>
+                          ? <span className={`badge ${Number(f.saldo_pendiente) > 0 ? 'badge-warning' : 'badge-success'}`}>{formatCOP(f.saldo_pendiente)}</span>
                           : '—'}
                       </td>
                     </tr>
@@ -231,7 +221,7 @@ export default function CuentaHuesped() {
             { label: 'Reservas activas',    value: resumen.reservas_activas ?? reservas.filter((r) => ['confirmada', 'checkin'].includes(r.estado)).length },
             { label: 'Noches hospedado',    value: resumen.total_noches ?? '—' },
             { label: 'Consumos totales',    value: resumen.total_consumos ?? consumos.length },
-            { label: 'Total gastado (COP)', value: resumen.total_gastado != null ? `$${fmt(resumen.total_gastado)}` : '—' },
+            { label: 'Total gastado (COP)', value: resumen.total_gastado != null ? formatCOP(resumen.total_gastado) : '—' },
             { label: 'Facturas emitidas',   value: facturas.length },
           ].map((k) => (
             <div key={k.label} className="card" style={{ textAlign: 'center', padding: '1.5rem 1rem' }}>
