@@ -1,0 +1,132 @@
+/* ─── LOGIN MODAL ────────────────────────────────────────────── */
+
+/* Backdrop con frosted-glass blur (iOS / macOS style) */
+.login-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(8, 8, 6, 0.62);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  animation: lm-backdrop-in 0.28s ease-out;
+}
+
+@keyframes lm-backdrop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Modal — borde dorado tenue, sombra cálida, animación de entrada */
+.login-modal-dialog {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - 2rem);
+  overflow-y: auto;
+  background: var(--c-surface);
+  border: 1px solid var(--c-gold-border);
+  border-radius: var(--r-lg);
+  padding: 2.25rem 2.25rem 1.75rem;
+  box-shadow:
+    0 30px 80px -20px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(201, 169, 110, 0.04),
+    0 0 60px -20px rgba(201, 169, 110, 0.18);
+  outline: none;
+  animation: lm-dialog-in 0.34s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: max-width 0.28s ease;
+}
+
+/* Variante más ancha para registro */
+.login-modal-dialog--wide {
+  max-width: 560px;
+}
+
+@keyframes lm-dialog-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+
+/* Botón de cierre — sutil, esquina superior derecha */
+.login-modal-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--c-text-3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color var(--t), background var(--t), border-color var(--t);
+}
+
+.login-modal-close:hover {
+  color: var(--c-gold);
+  background: var(--c-gold-bg);
+  border-color: var(--c-gold-border);
+}
+
+.login-modal-close:focus-visible {
+  outline: 2px solid var(--c-gold);
+  outline-offset: 2px;
+}
+
+/* Brand alineado al centro */
+.login-modal-brand {
+  text-align: center;
+  margin-bottom: 1.5rem;
+}
+
+.login-modal-brand .logo {
+  font-family: var(--f-heading);
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: var(--c-text);
+  letter-spacing: 0.02em;
+}
+
+.login-modal-brand .logo span {
+  color: var(--c-gold);
+}
+
+/* Wrapper del LoginForm dentro del modal */
+.login-modal-form .login-title {
+  font-size: 1.4rem;
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+.login-modal-form .login-sub {
+  text-align: center;
+  font-size: 0.82rem;
+  margin-bottom: 1.5rem;
+}
+
+.login-modal-form .login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.95rem;
+}
+
+/* ─── RESPONSIVE ─────────────────────────────────────────────── */
+@media (max-width: 480px) {
+  .login-modal-dialog {
+    padding: 1.75rem 1.5rem 1.25rem;
+    border-radius: var(--r-md);
+  }
+}
+
+/* Browsers que no soportan backdrop-filter — fallback con opacidad mayor */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .login-modal-backdrop {
+    background: rgba(8, 8, 6, 0.88);
+  }
+}
