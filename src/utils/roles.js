@@ -14,6 +14,31 @@ export const ROLE_LABELS = {
   [ROLE_KEYS.huesped]: 'Huesped',
 };
 
+/**
+ * ROLES — listas de strings que el backend acepta para cada rol.
+ * Centralizado para no duplicar en App.jsx, Sidebar.jsx, Reservas.jsx, etc.
+ * Cada lista cubre variantes con/sin tildes y con/sin espacios.
+ */
+export const ROLES = Object.freeze({
+  admin:         ['Administrador'],
+  recepcionista: ['Recepcionista'],
+  limpieza: [
+    'PersonalLimpieza',
+    'Personal de Limpieza',
+    'Personal de limpieza',
+    'Personal Limpieza',
+    'Limpieza',
+  ],
+  tecnico: [
+    'ServicioTecnico',
+    'Servicio Tecnico',
+    'Servicio técnico',
+    'Servicio tecnico',
+    'Servicio Técnico',
+  ],
+  huesped: ['Huesped', 'Huésped'],
+});
+
 export function normalizeRole(role) {
   const key = String(role ?? '')
     .normalize('NFD')
