@@ -58,10 +58,7 @@ jobs:
           production-branch: main
           production-deploy: true
           github-token: ${{ secrets.GITHUB_TOKEN }}
-<<<<<<< Updated upstream
           fails-without-credentials: true
-=======
->>>>>>> Stashed changes
           deploy-message: 'Deploy #${{ github.run_number }} - ${{ github.actor }}'
         env:
           NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
