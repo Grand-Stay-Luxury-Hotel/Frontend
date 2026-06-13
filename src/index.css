@@ -391,6 +391,50 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   z-index: 2;
   margin-top: 4rem;
   margin-bottom: 8rem;
+  transition: margin-bottom 0.35s ease;
+}
+/* Hero se expande hacia arriba cuando el cotizador está abierto */
+.hero--cotiz-open .hero-content {
+  margin-top: 5rem;
+  margin-bottom: 22rem;
+}
+
+/* ── ROOMS GRID ───────────────────────────────── */
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+/* Fila inferior: Suite Senior + Presidencial, 50/50 */
+.rooms-grid-duo {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+/* Layout horizontal: imagen izquierda, info derecha */
+.room-card--featured {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+.room-card--featured .room-image {
+  height: 100%;
+  min-height: 260px;
+  border-radius: 0;
+}
+.room-card--featured .room-image img {
+  height: 100%;
+}
+/* Botones equitativos al fondo de cada card */
+.room-card { display: flex; flex-direction: column; }
+.room-info  { flex: 1; display: flex; flex-direction: column; }
+@media (max-width: 900px) {
+  .rooms-grid     { grid-template-columns: repeat(2, 1fr); }
+  .rooms-grid-duo { grid-template-columns: 1fr; }
+  .room-card--featured { grid-template-columns: 1fr; }
+  .room-card--featured .room-image { height: 200px; min-height: unset; }
+}
+@media (max-width: 640px) {
+  .rooms-grid { grid-template-columns: 1fr; }
 }
 .hero-eyebrow { margin-bottom: 1.5rem; }
 .hero-title {
@@ -426,9 +470,15 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   border-radius: var(--r-lg) var(--r-lg) 0 0;
   padding: 1.6rem 2rem;
   display: flex;
+  flex-direction: column;
+  gap: 0;
+  align-items: stretch;
+  z-index: 3;
+}
+.booking-fields-row {
+  display: flex;
   gap: 1rem;
   align-items: flex-end;
-  z-index: 3;
 }
 .booking-field { flex: 1; min-width: 0; }
 .booking-field .gsdp-wrap { width: 100%; }
@@ -927,34 +977,10 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { transform: translateY(16px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
-/* ─── TOAST ──────────────────────────────────────────────────── */
-.toast-container {
-  position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
-  z-index: 500;
-  display: flex;
-  flex-direction: column;
-  gap: 0.6rem;
-  pointer-events: none;
-}
-.toast {
-  padding: 0.85rem 1.25rem;
-  border-radius: var(--r-sm);
-  font-size: 0.845rem;
-  font-weight: 400;
-  min-width: 260px;
-  max-width: 380px;
-  animation: toastIn 0.3s ease;
-  pointer-events: all;
-  border: 1px solid;
-  backdrop-filter: blur(10px);
-}
-.toast-success { background: rgba(12,22,17,0.97); border-color: rgba(82,168,130,0.5); color: var(--c-success); }
-.toast-error   { background: rgba(22,10,10,0.97); border-color: rgba(217,95,95,0.5);  color: var(--c-error); }
-.toast-info    { background: rgba(14,12,8,0.97);  border-color: var(--c-gold-border); color: var(--c-gold-light); }
-.toast-warning { background: rgba(22,18,8,0.97);  border-color: rgba(201,149,62,0.5); color: var(--c-warning); }
-@keyframes toastIn { from { transform: translateX(20px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+/* ─── TOAST styles → components/Toast.css ──────────────────── */
+/* El sistema de Toast vive en components/Toast.jsx + Toast.css
+   (clases prefijadas con .gs-toast). El bloque legacy se eliminó para evitar
+   conflictos de estilo con la versión nueva. */
 
 /* ─── CHARTS ─────────────────────────────────────────────────── */
 .chart-wrap { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: var(--r-md); padding: 1.75rem; }
@@ -974,6 +1000,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .grid-3 { grid-template-columns: 1fr 1fr; }
   .grid-4 { grid-template-columns: 1fr 1fr; }
   .booking-widget { flex-direction: column; border-radius: var(--r-md); bottom: -1px; }
+  .booking-fields-row { flex-direction: column; }
   .hero-content { margin-top: 6rem; margin-bottom: 18rem; }
   .stats-inner { grid-template-columns: 1fr; }
   .login-page { grid-template-columns: 1fr; }
@@ -1004,6 +1031,7 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
   .dashboard-sidebar,
   .sidebar-footer,
   .toast-container,
+  .gs-toast-container,
   .page-header p,
   .btn,
   nav,
